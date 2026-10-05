@@ -1,5 +1,11 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.1
+
+- First Workshop publication of EXPBG CDF Compat; content identical to 0.1.0.
+  The 0.1.0 publish attempt timed out at the Workbench Publish Project step before
+  any upload, and that version stays retired under the release guard.
+
 ## 0.1.0
 
 - EXPBG CDF Compat becomes one addon (`07BC942D90324CD9`, the identity reserved by

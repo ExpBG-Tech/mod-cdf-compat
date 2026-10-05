@@ -34,7 +34,7 @@
 | Garrison | Full selected under CDF reports the hold and keeps actors awake; Simulation sleep/wake; CDF save refused while a garrison is active; Prepare for Save releases garrisons, then save; clear-before-load with a Simulation-cached garrison releases it without recreating soldiers |
 | Older saves | A document written with the standalone mods and companions loads with GM Tools and this pack; a GM Tools-only document with Intel or Destruction rejects before clearing |
 | Multiplayer | Dedicated server and client with the same frozen modset |
-| Publication | Immutable `v0.1.0` tag, Workbench Publish Project (first publication), Unlisted APL-SA listing, five package files and hashes |
+| Publication | Immutable `v0.1.1` tag (0.1.0 retired: its Publish Project step timed out before upload), Workbench Publish Project (first publication), Unlisted APL-SA listing, five package files and hashes |
 
 For cold CDF proof save a new file, preserve and hash it, end the world, start a
 fresh one and load that file. Warm reloads, JSON round trips and direct setters
