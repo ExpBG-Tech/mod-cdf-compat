@@ -63,6 +63,32 @@ class EBG_CDFCacheState
   Reason = reason;
   Print("[EBG CDF HOLD] " + reason, LogLevel.WARNING);
  }
+ // [CDF TIMING]: own time excludes super (the rest of the adapter chain and CDF itself).
+ static int ApplyCalls, ApplyPayload, ApplyOwnMs, ApplyInnerMs, ApplySlowestMs;
+ static void ResetApplyTiming()
+ {
+  ApplyCalls = 0;
+  ApplyPayload = 0;
+  ApplyOwnMs = 0;
+  ApplyInnerMs = 0;
+  ApplySlowestMs = 0;
+ }
+ static void ApplyTiming(bool payload, int start, int innerStart, int innerEnd)
+ {
+  int inner = innerEnd - innerStart;
+  int own = System.GetTickCount() - start - inner;
+  ApplyCalls++;
+  if (payload) ApplyPayload++;
+  ApplyOwnMs += own;
+  ApplyInnerMs += inner;
+  if (own > ApplySlowestMs) ApplySlowestMs = own;
+ }
+}
+// One CDF group record that ended a restore without AI (see EBG_ReportEmptyGroups).
+class EBG_CDFEmptyGroup
+{
+ int Index, Children, Characters, Missing, Destroyed, Waypoints;
+ CDF_GMSaveEntityRecord Record;
 }
 modded class CDF_GMSaveState
 {
@@ -85,20 +111,27 @@ modded class CDF_GMSaveState
  }
  override static void Apply(IEntity entity, string state)
  {
+  int timing = System.GetTickCount();
   EBG_CacheZone zone = EBG_CacheZone.Cast(entity);
   if (!zone || !EBG_CDFCacheState.Declared(state))
   {
+   int passInner = System.GetTickCount();
    super.Apply(entity, state);
+   EBG_CDFCacheState.ApplyTiming(false, timing, passInner, System.GetTickCount());
    return;
   }
   string payload, original;
   if (!EBG_CDFCacheState.Unwrap(state, payload, original))
   {
    EBG_CDFCacheState.Fail("Module snapshot envelope is invalid");
+   EBG_CDFCacheState.ApplyTiming(true, timing, 0, 0);
    return;
   }
+  int inner = System.GetTickCount();
   super.Apply(entity, original);
+  int innerEnd = System.GetTickCount();
   if (!EBG_CacheSnapshot.ReadZone(zone, payload)) EBG_CDFCacheState.Fail("Module snapshot import failed");
+  EBG_CDFCacheState.ApplyTiming(true, timing, inner, innerEnd);
  }
 }
 modded class CDF_GMSaveCapture
@@ -165,6 +198,9 @@ modded class CDF_GMSaveRestore
  }
  override static bool Restore(notnull CDF_GMSaveDocument document)
  {
+  int timing = System.GetTickCount();
+  int records = document.m_aEntities.Count();
+  int payloadRecords;
   if (EBG_CacheSnapshot.Loading) { EBG_CDFCacheState.Reject("Cache load already in progress");
    return false;
   }
@@ -209,6 +245,7 @@ modded class CDF_GMSaveRestore
     return false;
    }
    if (!EBG_CDFCacheState.Declared(record.m_sState)) continue;
+   payloadRecords++;
    string payload, original, reason;
    if (!EBG_CDFCacheState.Unwrap(record.m_sState, payload, original) || !EBG_CacheSnapshot.ValidateZone(payload, reason) || !EBG_CDFCacheState.UniqueTokens(payload, snapshotTokens))
    {
@@ -242,8 +279,11 @@ modded class CDF_GMSaveRestore
   ref set<SCR_EditableEntityComponent> previousNativeRestore = s_RestoredEntities;
   EBG_CDFAuthors.Reset();
   EBG_CDFAuthors.Restoring = true;
+  EBG_CDFCacheState.ResetApplyTiming();
+  int inner = System.GetTickCount();
   bool result = super.Restore(document);
-  EBG_CDFAuthors.FinishAssignments();
+  int innerEnd = System.GetTickCount();
+  EBG_CDFAuthors.FinishAssignments(document);
   if (!result)
   {
    EBG_CacheSnapshot.Loading = false;
@@ -261,6 +301,11 @@ modded class CDF_GMSaveRestore
    EBG_CDFCacheState.ImportMode = null;
   }
   if (result) GetGame().GetCallqueue().CallLater(EBG_FinishPortableImport, 600, false);
+  string path = "scan";
+  if (ownsState) path = "strict";
+  int before = inner - timing;
+  int after = System.GetTickCount() - innerEnd;
+  PrintFormat("[CDF TIMING] unit-caching restore path=%1 result=%2 records=%3 payload=%4 ownMs=%5 beforeMs=%6 afterMs=%7 innerMs=%8", path, result, records, payloadRecords, before + after, before, after, innerEnd - inner);
   return result;
  }
  static void EBG_ShutdownForWorldCleanup()
@@ -327,8 +372,104 @@ modded class CDF_GMSaveRestore
   EBG_CDFCacheState.PendingDocument = null;
   EBG_CacheSnapshot.Loading = false;
   EBG_CacheSnapshot.EndImport();
+  if (complete && document) EBG_ReportEmptyGroups(document);
   PrintFormat("[EBG CDF LOAD FINALIZED] success=%1 nativeComplete=%2", !EBG_CDFCacheState.Failed, complete);
   if (EBG_CDFCacheState.Failed) Print("[EBG CDF LOAD] Import failed: " + EBG_CDFCacheState.Reason, LogLevel.ERROR);
+  PrintFormat("[CDF TIMING] unit-caching apply calls=%1 payload=%2 ownMs=%3 innerMs=%4 slowestOwnMs=%5 complete=%6", EBG_CDFCacheState.ApplyCalls, EBG_CDFCacheState.ApplyPayload, EBG_CDFCacheState.ApplyOwnMs, EBG_CDFCacheState.ApplyInnerMs, EBG_CDFCacheState.ApplySlowestMs, complete);
+ }
+ // CDF guards every group whose record has children and later reports how many stayed
+ // without AI. Name each one and say whether its members were in the save at all, so a
+ // save captured after members were removed (old Full caching without this companion)
+ // is not mistaken for a restore failure. Runs once per load, after CDF finalization.
+ protected static void EBG_ReportEmptyGroups(CDF_GMSaveDocument document)
+ {
+  array<ref CDF_GMSaveEntityRecord> records = document.m_aEntities;
+  map<int, ref EBG_CDFEmptyGroup> candidates = new map<int, ref EBG_CDFEmptyGroup>();
+  array<ref EBG_CDFEmptyGroup> groups = {};
+  for (int i = 0; i < records.Count(); i++)
+  {
+   CDF_GMSaveEntityRecord record = records[i];
+   if (!record || !record.m_Entity) continue;
+   SCR_AIGroup group = SCR_AIGroup.Cast(record.m_Entity.GetOwner());
+   if (!group || group.GetAgentsCount() != 0) continue;
+   EBG_CDFEmptyGroup candidate = new EBG_CDFEmptyGroup();
+   candidate.Index = i;
+   candidate.Record = record;
+   candidates.Insert(i, candidate);
+   groups.Insert(candidate);
+  }
+  if (groups.IsEmpty()) return;
+  foreach (CDF_GMSaveEntityRecord child : records)
+  {
+   EBG_CDFEmptyGroup parent;
+   if (!child || !candidates.Find(child.m_iParent, parent)) continue;
+   parent.Children++;
+   int type = child.m_iEntityType;
+   if (type < 0 && child.m_Entity) type = child.m_Entity.GetEntityType();
+   if (type == EEditableEntityType.WAYPOINT) parent.Waypoints++;
+   else if (type == EEditableEntityType.CHARACTER || (type < 0 && !child.m_Entity))
+   {
+    // Files written before CDF 1.4.1 carry no type: a child that is gone counts as a missing member.
+    parent.Characters++;
+    if (!child.m_Entity) parent.Missing++;
+    else if (child.m_Entity.IsDestroyed() || SCR_Enum.HasFlag(child.m_iSaveFlags, EEditableEntitySaveFlag.DESTROYED)) parent.Destroyed++;
+   }
+  }
+  // Full snapshots held by this document's cache modules, matched by group prefab and position.
+  array<string> cachedPrefabs = {};
+  array<vector> cachedPositions = {};
+  int cachedGroups;
+  int cacheModules = EBG_CachedGroupPoses(document, cachedPrefabs, cachedPositions, cachedGroups);
+  int empty, listed, neverSaved, spawnFailed, dead, notJoined;
+  foreach (EBG_CDFEmptyGroup entry : groups)
+  {
+   // Same rule as CDF's guard: a group without child records was left to its prefab.
+   if (entry.Children == 0) continue;
+   empty++;
+   string verdict = "not-in-group";
+   if (entry.Missing > 0) { verdict = "spawn-failed"; spawnFailed++; }
+   else if (entry.Characters == 0) { verdict = "never-saved"; neverSaved++; }
+   else if (entry.Destroyed == entry.Characters) { verdict = "saved-dead"; dead++; }
+   else notJoined++;
+   if (listed >= 64) continue;
+   listed++;
+   bool cached = false;
+   for (int c = 0; c < cachedPrefabs.Count() && !cached; c++)
+   {
+    cached = cachedPrefabs[c] == entry.Record.m_sPrefab && vector.DistanceSq(cachedPositions[c], entry.Record.m_vPosition) < 4;
+   }
+   Print(string.Format("[EBG CDF EMPTY GROUP] members=%1 record=%2 prefab=%3 pos=%4 ", verdict, entry.Index, entry.Record.m_sPrefab, entry.Record.m_vPosition) + string.Format("savedCharacters=%1 missing=%2 destroyed=%3 waypoints=%4 otherChildren=%5 cacheSnapshot=%6", entry.Characters, entry.Missing, entry.Destroyed, entry.Waypoints, entry.Children - entry.Characters - entry.Waypoints, cached), LogLevel.WARNING);
+  }
+  if (empty == 0) return;
+  PrintFormat("[EBG CDF EMPTY GROUPS] empty=%1 neverSaved=%2 spawnFailed=%3 savedDead=%4 notInGroup=%5 listed=%6 cacheModules=%7 cachedGroups=%8", empty, neverSaved, spawnFailed, dead, notJoined, listed, cacheModules, cachedGroups, level: LogLevel.WARNING);
+ }
+ protected static int EBG_CachedGroupPoses(CDF_GMSaveDocument document, array<string> prefabs, array<vector> positions, out int total)
+ {
+  int modules;
+  total = 0;
+  foreach (CDF_GMSaveEntityRecord record : document.m_aEntities)
+  {
+   if (!record || !EBG_CDFCacheState.IsModule(record.m_sPrefab) || !EBG_CDFCacheState.Declared(record.m_sState)) continue;
+   string payload, original;
+   JsonLoadContext context = new JsonLoadContext();
+   int count;
+   if (!EBG_CDFCacheState.Unwrap(record.m_sState, payload, original) || !context.LoadFromString(payload) || !context.ReadValue("cachedGroups", count)) continue;
+   modules++;
+   total += count;
+   for (int i = 0; i < count && i < 2048; i++)
+   {
+    if (!context.StartObject("cached" + i.ToString())) break;
+    string prefab;
+    array<vector> matrix = {};
+    if (context.ReadValue("prefab", prefab) && context.ReadValue("matrix", matrix) && matrix.Count() == 4)
+    {
+     prefabs.Insert(prefab);
+     positions.Insert(matrix[3]);
+    }
+    context.EndObject();
+   }
+  }
+  return modules;
  }
 }
 modded class EBG_CacheSnapshot

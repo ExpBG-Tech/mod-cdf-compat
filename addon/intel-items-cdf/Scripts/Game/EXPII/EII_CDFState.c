@@ -46,8 +46,7 @@ class EII_CDFItem
  bool Valid()
  {
   if (!IsIntelPrefab(prefab) || !EII_IntelComponent.ValidText(title, content)) return false;
-  Resource resource = Resource.Load(prefab);
-  return resource && resource.IsValid();
+  return EII_CDFLoad.PrefabValid(prefab);
  }
 }
 
@@ -87,7 +86,7 @@ class EII_CDFPayload
   JsonLoadContext context = new JsonLoadContext();
   return context.LoadFromString(state) && context.ReadValue("eiiIntel", payload) && payload && payload.Valid() && context.ReadValue("cdfState", original);
  }
- static bool ValidDocument(CDF_GMSaveDocument document)
+ static bool ValidDocument(CDF_GMSaveDocument document, bool keep = false)
  {
   if (!document || !document.m_aEntities) return false;
   foreach (CDF_GMSaveEntityRecord record : document.m_aEntities)
@@ -104,8 +103,105 @@ class EII_CDFPayload
    if (!Read(record.m_sState, payload, original)) return false;
    if (!guid.IsEmpty() && !payload.item) return false;
    if (payload.item && EII_CDFItem.GetIntelGuid(payload.item.prefab) != guid) return false;
+   if (keep) EII_CDFLoad.Keep(record.m_sState, payload, original);
   }
   return true;
+ }
+}
+
+// A payload validated by Restore, reused by Apply for the same state text.
+class EII_CDFParsed
+{
+ ref EII_CDFPayload Payload;
+ string Original;
+}
+
+// Per-load restore helpers: validation reuse, bounded carried-Intel matching and
+// [CDF TIMING] counters. Kept apart from the serialized payload classes.
+class EII_CDFLoad
+{
+ static ref set<string> ValidPrefabs = new set<string>();
+ static ref map<string, ref EII_CDFParsed> Validated = new map<string, ref EII_CDFParsed>();
+ static int Payloads, FinishAttempts;
+ static int ApplyCalls, ApplyPayload, ApplyOwnMs, ApplyInnerMs, ApplySlowestMs;
+ static void Reset()
+ {
+  Validated.Clear();
+  Payloads = 0;
+  FinishAttempts = 0;
+  ApplyCalls = 0;
+  ApplyPayload = 0;
+  ApplyOwnMs = 0;
+  ApplyInnerMs = 0;
+  ApplySlowestMs = 0;
+ }
+ static bool PrefabValid(string prefab)
+ {
+  if (ValidPrefabs.Contains(prefab)) return true;
+  Resource resource = Resource.Load(prefab);
+  if (!resource || !resource.IsValid()) return false;
+  ValidPrefabs.Insert(prefab);
+  return true;
+ }
+ static void Keep(string state, EII_CDFPayload payload, string original)
+ {
+  EII_CDFParsed parsed = new EII_CDFParsed();
+  parsed.Payload = payload;
+  parsed.Original = original;
+  Validated.Set(state, parsed);
+  Payloads++;
+ }
+ // Fail closed: a state Restore did not validate is parsed and validated again.
+ static bool ReadValidated(string state, out EII_CDFPayload payload, out string original)
+ {
+  EII_CDFParsed parsed;
+  if (Validated.Find(state, parsed) && parsed && parsed.Payload)
+  {
+   payload = parsed.Payload;
+   original = parsed.Original;
+   return true;
+  }
+  return EII_CDFPayload.Read(state, payload, original);
+ }
+ // Intel instances by GUID in inventory order, each entity once; skips entities in exclude.
+ static void GroupIntel(array<IEntity> items, set<IEntity> exclude, map<string, ref array<IEntity>> groups)
+ {
+  set<IEntity> seen = new set<IEntity>();
+  foreach (IEntity item : items)
+  {
+   if (!item || seen.Contains(item) || (exclude && exclude.Contains(item))) continue;
+   seen.Insert(item);
+   if (!item.FindComponent(EII_IntelComponent) || !item.GetPrefabData()) continue;
+   string guid = EII_CDFItem.GetIntelGuid(item.GetPrefabData().GetPrefabName());
+   if (guid.IsEmpty()) continue;
+   array<IEntity> bucket = groups.Get(guid);
+   if (!bucket)
+   {
+    bucket = {};
+    groups.Insert(guid, bucket);
+   }
+   bucket.Insert(item);
+  }
+ }
+ // Next unassigned instance of this GUID, or null.
+ static IEntity Take(map<string, ref array<IEntity>> groups, map<string, int> taken, string guid)
+ {
+  array<IEntity> bucket = groups.Get(guid);
+  int next = taken.Get(guid);
+  if (!bucket || next >= bucket.Count()) return null;
+  taken.Set(guid, next + 1);
+  return bucket[next];
+ }
+ // [CDF TIMING]: own time excludes super (the rest of the adapter chain and CDF itself).
+ static void ApplyTiming(bool payload, int start, int innerStart, int innerEnd)
+ {
+  int inner = innerEnd - innerStart;
+  int own = System.GetTickCount() - start - inner;
+  ApplyCalls++;
+  if (payload) ApplyPayload++;
+  ApplyOwnMs += own;
+  ApplyInnerMs += inner;
+  if (own > ApplySlowestMs) ApplySlowestMs = own;
  }
 }
 
@@ -141,20 +237,26 @@ modded class CDF_GMSaveState
  }
  override static void Apply(IEntity entity, string state)
  {
+  int timing = System.GetTickCount();
   if (!entity || !state.Contains("\"eiiIntel\""))
   {
+   int passInner = System.GetTickCount();
    super.Apply(entity, state);
+   EII_CDFLoad.ApplyTiming(false, timing, passInner, System.GetTickCount());
    return;
   }
   EII_CDFPayload payload;
   string original;
-  if (!EII_CDFPayload.Read(state, payload, original))
+  if (!EII_CDFLoad.ReadValidated(state, payload, original))
   {
    Print("[EII CDF] Invalid payload rejected", LogLevel.ERROR);
+   EII_CDFLoad.ApplyTiming(true, timing, 0, 0);
    return;
   }
   EII_IntelComponent.RestoreDepth++;
+  int inner = System.GetTickCount();
   super.Apply(entity, original);
+  int innerEnd = System.GetTickCount();
   if (payload.item)
   {
    EII_IntelComponent intel = EII_IntelComponent.Cast(entity.FindComponent(EII_IntelComponent));
@@ -169,6 +271,7 @@ modded class CDF_GMSaveState
    else Print("[EII CDF] Inventory restoration disabled in CDF configuration", LogLevel.ERROR);
   }
   EII_IntelComponent.RestoreDepth--;
+  EII_CDFLoad.ApplyTiming(true, timing, inner, innerEnd);
  }
  protected static void EII_RestoreInventory(IEntity entity, array<ref EII_CDFItem> records)
  {
@@ -180,38 +283,54 @@ modded class CDF_GMSaveState
   }
   // Internal static calls can bypass modded overrides. Let CDF restore its
   // original inventory, then assign each payload to a distinct actual instance.
-  array<IEntity> items = {}, restored = {};
-  set<IEntity> assigned = new set<IEntity>();
+  // Bounded per carrier: one inventory snapshot, restored Intel grouped by GUID once,
+  // and every missing item spawned before one after-scan (no rescan per record).
+  array<IEntity> items = {};
   manager.GetItems(items, EStoragePurpose.PURPOSE_ANY);
-  foreach (IEntity item : items)
-   if (item && item.FindComponent(EII_IntelComponent) && item.GetPrefabData()) restored.Insert(item);
+  map<string, ref array<IEntity>> restored = new map<string, ref array<IEntity>>();
+  EII_CDFLoad.GroupIntel(items, null, restored);
+  map<string, int> taken = new map<string, int>();
+  array<IEntity> created = {};
+  array<bool> rejected = {};
+  bool spawned = false;
   foreach (EII_CDFItem record : records)
   {
-   IEntity created;
-   string guid = EII_CDFItem.GetIntelGuid(record.prefab);
-   foreach (IEntity candidate : restored)
-   {
-    if (!candidate || assigned.Contains(candidate) || !candidate.GetPrefabData()) continue;
-    if (EII_CDFItem.GetIntelGuid(candidate.GetPrefabData().GetPrefabName()) == guid) { created = candidate; break; }
-   }
+   IEntity match = EII_CDFLoad.Take(restored, taken, EII_CDFItem.GetIntelGuid(record.prefab));
+   created.Insert(match);
+   rejected.Insert(false);
+   if (match) continue;
    // CDF can omit deep/overflow items. Only insert when no matching instance exists.
-   if (!created)
+   if (!manager.TrySpawnPrefabToStorage(record.prefab, null, -1, EStoragePurpose.PURPOSE_ANY))
    {
-    array<IEntity> before = {};
-    manager.GetItems(before, EStoragePurpose.PURPOSE_ANY);
-    if (!manager.TrySpawnPrefabToStorage(record.prefab, null, -1, EStoragePurpose.PURPOSE_ANY))
-    {
-     Print("[EII CDF] Cannot restore carried intel: inventory rejected item", LogLevel.ERROR);
-     continue;
-    }
-    created = FindNewItemAmong(manager, before);
+    Print("[EII CDF] Cannot restore carried intel: inventory rejected item", LogLevel.ERROR);
+    rejected[rejected.Count() - 1] = true;
+    continue;
    }
-   if (created) assigned.Insert(created);
-   EII_IntelComponent intel;
-   if (created) intel = EII_IntelComponent.Cast(created.FindComponent(EII_IntelComponent));
-   if (!intel || !intel.RestoreState(record.title, record.content, record.spent))
+   spawned = true;
+  }
+  if (spawned)
+  {
+   array<IEntity> after = {};
+   manager.GetItems(after, EStoragePurpose.PURPOSE_ANY);
+   set<IEntity> known = new set<IEntity>();
+   foreach (IEntity item : items) known.Insert(item);
+   map<string, ref array<IEntity>> fresh = new map<string, ref array<IEntity>>();
+   EII_CDFLoad.GroupIntel(after, known, fresh);
+   map<string, int> freshTaken = new map<string, int>();
+   for (int i = 0; i < records.Count(); i++)
+   {
+    if (!created[i] && !rejected[i]) created[i] = EII_CDFLoad.Take(fresh, freshTaken, EII_CDFItem.GetIntelGuid(records[i].prefab));
+   }
+  }
+  for (int r = 0; r < records.Count(); r++)
+  {
+   if (rejected[r]) continue;
+   EII_CDFItem entry = records[r];
+   EII_IntelComponent intel = null;
+   if (created[r]) intel = EII_IntelComponent.Cast(created[r].FindComponent(EII_IntelComponent));
+   if (!intel || !intel.RestoreState(entry.title, entry.content, entry.spent))
     Print("[EII CDF] Restored inventory item could not receive intel", LogLevel.ERROR);
-   else intel.SetDebug(record.diagnostics);
+   else intel.SetDebug(entry.diagnostics);
   }
  }
 }
@@ -277,11 +396,39 @@ modded class CDF_GMSaveRestore
 {
  override static bool Restore(notnull CDF_GMSaveDocument document)
  {
-  if (!EII_CDFPayload.ValidDocument(document))
+  int timing = System.GetTickCount();
+  int records = document.m_aEntities.Count();
+  EII_CDFLoad.Reset();
+  if (!EII_CDFPayload.ValidDocument(document, true))
   {
+   EII_CDFLoad.Validated.Clear();
    Print("[EII CDF] Load rejected before world clearing: invalid intel state", LogLevel.ERROR);
    return false;
   }
-  return super.Restore(document);
+  int inner = System.GetTickCount();
+  bool result = super.Restore(document);
+  int innerEnd = System.GetTickCount();
+  if (result)
+  {
+   GetGame().GetCallqueue().Remove(EII_FinishTiming);
+   GetGame().GetCallqueue().CallLater(EII_FinishTiming, 600, false);
+  }
+  else EII_CDFLoad.Validated.Clear();
+  int before = inner - timing;
+  int after = System.GetTickCount() - innerEnd;
+  PrintFormat("[CDF TIMING] intel-items restore path=scan result=%1 records=%2 payload=%3 ownMs=%4 beforeMs=%5 afterMs=%6 innerMs=%7", result, records, EII_CDFLoad.Payloads, before + after, before, after, innerEnd - inner);
+  return result;
+ }
+ // One Apply timing line per load, once the CDF deferred state pass has run (or timed out).
+ protected static void EII_FinishTiming()
+ {
+  bool complete = !s_RestoredEntities && s_aPendingStates && s_aPendingStates.IsEmpty();
+  if (!complete && GetGame())
+  {
+   EII_CDFLoad.FinishAttempts++;
+   if (EII_CDFLoad.FinishAttempts < 20) { GetGame().GetCallqueue().CallLater(EII_FinishTiming, 100, false); return; }
+  }
+  EII_CDFLoad.Validated.Clear();
+  PrintFormat("[CDF TIMING] intel-items apply calls=%1 payload=%2 ownMs=%3 innerMs=%4 slowestOwnMs=%5 complete=%6", EII_CDFLoad.ApplyCalls, EII_CDFLoad.ApplyPayload, EII_CDFLoad.ApplyOwnMs, EII_CDFLoad.ApplyInnerMs, EII_CDFLoad.ApplySlowestMs, complete);
  }
 }

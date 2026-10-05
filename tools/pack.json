@@ -17,9 +17,21 @@
         "note": "Byte-identical at 1ae137de34e1a30bdc7164c179b50e0a34d25c76 (Optimizer 0.1.31, the GM Tools unit-caching source) and in the installed Workshop 0.1.3 data.pak."
       },
       "files": {
-        "Scripts/Game/EXPBG/EBG_CDFAuthorRegistration.c": "9658a5bb1c930b7a59e6a7b3b0fad2714c3fdc41",
-        "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": "7ce191ae76fe281b61ca311ea3cff4dc9334a305",
+        "Scripts/Game/EXPBG/EBG_CDFAuthorRegistration.c": "994265fc68fdb7cf811cb3e91cfd3babdd1368b4",
+        "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": "9963af0f5124eebdb0c648f1030b888ac5135422",
         "UI/Textures/EXPBG/EXPBG_CDF_Workshop_Banner.png": "da6766ffd8acc81f86aad0f90965babe0dae4730"
+      },
+      "localChanges": {
+        "Scripts/Game/EXPBG/EBG_CDFAuthorRegistration.c": {
+          "originBlob": "9658a5bb1c930b7a59e6a7b3b0fad2714c3fdc41",
+          "version": "0.1.3",
+          "note": "Changed in this repository: restored characters now receive the CDF author compensation (SetAuthor finds the CDF record itself because vanilla SCR_EditableCharacterComponent.EOnEditorSessionLoad skips super); a found record is never dropped; [EBG CDF AUTHORS] restore summary and per-frame summary of deletes whose author is not registered."
+        },
+        "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": {
+          "originBlob": "7ce191ae76fe281b61ca311ea3cff4dc9334a305",
+          "version": "0.1.3",
+          "note": "Changed in this repository: [EBG CDF EMPTY GROUP(S)] diagnostic for CDF-guarded groups that end a restore without AI (members never saved vs failed to restore, Unit Caching snapshot present); [CDF TIMING] Restore and Apply timing; passes the document to the author restore summary."
+        }
       }
     },
     {
@@ -39,10 +51,17 @@
       },
       "files": {
         "Scripts/Game/EXPII/EII_CDFNotices.c": "19ac890ebffdd07dd6208dabf09fb3b6088cf406",
-        "Scripts/Game/EXPII/EII_CDFState.c": "8177c598d764447debdac61cf488229b71c833cb",
+        "Scripts/Game/EXPII/EII_CDFState.c": "87d77686fb9e6e8feee21951982ed9adf2680c2f",
         "UI/Textures/EXPII/EII_CDF_Workshop.edds": "7519e1ed63133806ab7008d5e4f2e8c9a489100a",
         "UI/Textures/EXPII/EII_CDF_Workshop.edds.meta": "ca2c7713a927bdaac2154ff340e3262508381e3c",
         "UI/Textures/EXPII/EII_CDF_Workshop.png": "a32b5dc35735b352ff110c9078f0975fd692d727"
+      },
+      "localChanges": {
+        "Scripts/Game/EXPII/EII_CDFState.c": {
+          "originBlob": "8177c598d764447debdac61cf488229b71c833cb",
+          "version": "0.1.3",
+          "note": "Changed in this repository: carried-Intel restore matching bounded per carrier (GUID buckets, one before/after inventory scan); Restore validation and prefab checks reused by Apply; [CDF TIMING] Restore and Apply timing."
+        }
       }
     },
     {
@@ -60,13 +79,13 @@
         "note": "Published bridge 0.0.1 (receipt artifacts/cdf-001-final). Byte-identical at 2d4eb24dab15d9ba9e6ff067e6d0cacbc536e0a9 (v0.0.9, the GM Tools ambient-destruction source) and in the installed Workshop 0.0.1 data.pak. The bridge has no release tag; its version lives in compat/CDF/VERSION."
       },
       "files": {
-        "Scripts/Game/EAD_CDF/EAD_CDF.c": "ae192f901ef1568720f146ff19b3ecd3db89b538"
+        "Scripts/Game/EAD_CDF/EAD_CDF.c": "49d104ba4f58716445602300d125a8f30f540916"
       },
       "localChanges": {
         "Scripts/Game/EAD_CDF/EAD_CDF.c": {
           "originBlob": "b156cb11da51f61c8661b991c0f6771811cce6a0",
-          "version": "0.1.2",
-          "note": "Changed in this repository: a refused CDF load opens a dialog for the Game Master."
+          "version": "0.1.3",
+          "note": "Changed in this repository: a refused CDF load opens a dialog for the Game Master (0.1.2); [CDF TIMING] Restore and Apply timing, building replay counted as adapter time (0.1.3)."
         }
       }
     },

@@ -97,6 +97,15 @@ fresh world.
 - Saves made with the standalone mods and companions use the same prefabs and
   payload keys and are expected to load with GM Tools and this pack, but that
   has not been tested yet.
+- A CDF save made while Full caching was active without this pack (or with an
+  old standalone Optimizer build) holds the cached groups and their waypoints
+  but not their removed members, so loading it recreates those groups empty.
+  CDF logs `N groupes sont restes sans aucune IA` and this pack lists each one as
+  `[EBG CDF EMPTY GROUP] members=never-saved ... cacheSnapshot=0`; those members
+  cannot be recovered. `members=spawn-failed` means saved members failed to load
+  (for example a missing mod prefab).
+- Large CDF loads can freeze the server for a few seconds. Load saves before
+  players join; `[CDF TIMING]` lines show how much of a freeze is adapter work.
 - No universal mod compatibility or performance gain is claimed.
 
 ## Garrison

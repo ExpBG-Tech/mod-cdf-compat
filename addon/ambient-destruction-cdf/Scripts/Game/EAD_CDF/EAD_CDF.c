@@ -57,6 +57,37 @@ class EAD_CDF
   if (entity) editable = SCR_EditableEntityComponent.Cast(entity.FindComponent(SCR_EditableEntityComponent));
   return editable && !editable.HasEntityFlag(EEditableEntityFlag.NON_DELETABLE) && CDF_GMSaveCapture.IsManaged(editable);
  }
+ // [CDF TIMING]: own time excludes super (the rest of the adapter chain and CDF itself) but
+ // includes the building replay that runs inside the CDF Restore call (HookMs).
+ static int HookMs, TimingAttempts;
+ static int ApplyCalls, ApplyPayload, ApplyOwnMs, ApplyInnerMs, ApplySlowestMs;
+ static void ResetTiming()
+ {
+  HookMs = 0;
+  TimingAttempts = 0;
+  ApplyCalls = 0;
+  ApplyPayload = 0;
+  ApplyOwnMs = 0;
+  ApplyInnerMs = 0;
+  ApplySlowestMs = 0;
+ }
+ static void ApplyTiming(bool payload, int start, int innerStart, int innerEnd)
+ {
+  int inner = innerEnd - innerStart;
+  int own = System.GetTickCount() - start - inner;
+  ApplyCalls++;
+  if (payload) ApplyPayload++;
+  ApplyOwnMs += own;
+  ApplyInnerMs += inner;
+  if (own > ApplySlowestMs) ApplySlowestMs = own;
+ }
+ static void RestoreTiming(string path, bool result, int records, int payload, int start, int innerStart, int innerEnd)
+ {
+  int before = innerStart - start;
+  int after = System.GetTickCount() - innerEnd;
+  int inner = innerEnd - innerStart - HookMs;
+  PrintFormat("[CDF TIMING] ambient-destruction restore path=%1 result=%2 records=%3 payload=%4 ownMs=%5 beforeMs=%6 afterMs=%7 innerMs=%8 hookMs=%9", path, result, records, payload, before + after + HookMs, before, after, inner, HookMs);
+ }
 }
 modded class CDF_GMSaveState
 {
@@ -76,14 +107,24 @@ modded class CDF_GMSaveState
  }
  override static void Apply(IEntity entity, string state)
  {
+  int timing = System.GetTickCount();
   EAD_Zone zone = EAD_Zone.Cast(entity);
-  if (!zone || !EAD_CDF.Declared(state, "eadZone")) { super.Apply(entity, state); return; }
+  if (!zone || !EAD_CDF.Declared(state, "eadZone"))
+  {
+   int passInner = System.GetTickCount();
+   super.Apply(entity, state);
+   EAD_CDF.ApplyTiming(false, timing, passInner, System.GetTickCount());
+   return;
+  }
   string payload, original;
-  if (!EAD_CDF.Unwrap(state, "eadZone", payload, original)) { EAD_CDF.Fail("Invalid zone envelope"); return; }
+  if (!EAD_CDF.Unwrap(state, "eadZone", payload, original)) { EAD_CDF.Fail("Invalid zone envelope"); EAD_CDF.ApplyTiming(true, timing, 0, 0); return; }
   EAD_ZoneSnapshot data = EAD_Snapshot.ReadZone(payload);
-  if (!data) { EAD_CDF.Fail("Invalid zone snapshot"); return; }
+  if (!data) { EAD_CDF.Fail("Invalid zone snapshot"); EAD_CDF.ApplyTiming(true, timing, 0, 0); return; }
+  int inner = System.GetTickCount();
   super.Apply(entity, original);
+  int innerEnd = System.GetTickCount();
   if (!zone.ImportSnapshot(data)) EAD_CDF.Fail("Zone snapshot import rejected");
+  EAD_CDF.ApplyTiming(true, timing, inner, innerEnd);
  }
 }
 modded class CDF_GMSaveCapture
@@ -133,6 +174,8 @@ modded class CDF_GMSaveRestore
 {
  override static bool Restore(notnull CDF_GMSaveDocument document)
  {
+  int timing = System.GetTickCount();
+  int records = document.m_aEntities.Count();
   if (EAD_CDF.ActiveWorld && !EAD_CDF.CurrentWorld()) EAD_ResetForWorld();
   if (!Replication.IsServer()) return false;
   if (EAD_Snapshot.Loading || EAD_CDF.Pending) { EAD_CDF.Reject("A previous Ambient Destruction import is still running or failed; wait, or restart the mission before loading"); return false; }
@@ -144,7 +187,16 @@ modded class CDF_GMSaveRestore
   }
   // Preserve ordinary CDF handling (including skipped missing prefabs) when this
   // document has no EAD state. Strict validation protects only our transaction.
-  if (!envelope && !hasZone) return super.Restore(document);
+  if (!envelope && !hasZone)
+  {
+   EAD_CDF.ResetTiming();
+   int passInner = System.GetTickCount();
+   bool passed = super.Restore(document);
+   int passEnd = System.GetTickCount();
+   EAD_CDF.RestoreTiming("pass", passed, records, 0, timing, passInner, passEnd);
+   if (passed) EAD_ScheduleTiming();
+   return passed;
+  }
   array<vector> zones = {};
   foreach (CDF_GMSaveEntityRecord record : document.m_aEntities)
   {
@@ -185,7 +237,10 @@ modded class CDF_GMSaveRestore
   string factionState = document.m_sFactionState;
   array<ref CDF_GMSaveEntityRecord> originalRecords = document.m_aEntities;
   document.m_sWorldState = original;
+  EAD_CDF.ResetTiming();
+  int inner = System.GetTickCount();
   bool started = super.Restore(document);
+  int innerEnd = System.GetTickCount();
   document.m_sWorldState = wrappedWorld;
   if (EAD_CDF.Failed)
   {
@@ -193,6 +248,9 @@ modded class CDF_GMSaveRestore
    document.m_sFactionState = factionState;
   }
   PrintFormat("[EAD CDF DISPATCH] repairHook=%1 records=%2", EAD_CDF.RepairHookRan, document.m_aEntities.Count());
+  bool restored = started && !EAD_CDF.Failed && EAD_CDF.RepairHookRan;
+  EAD_CDF.RestoreTiming("strict", restored, records, zones.Count(), timing, inner, innerEnd);
+  if (restored) EAD_ScheduleTiming();
   if (!started && !EAD_CDF.RepairHookRan)
   {
    // An inner companion rejected preflight: no EAD/CDF clear occurred, so keep the
@@ -238,6 +296,22 @@ modded class CDF_GMSaveRestore
   EAD_Snapshot.Loading = EAD_CDF.Failed;
   PrintFormat("[EAD CDF LOAD FINALIZED] success=%1 nativeComplete=%2 reason=%3", !EAD_CDF.Failed, nativeComplete, EAD_CDF.Reason);
  }
+ protected static void EAD_ScheduleTiming()
+ {
+  GetGame().GetCallqueue().Remove(EAD_FinishTiming);
+  GetGame().GetCallqueue().CallLater(EAD_FinishTiming, 600, false);
+ }
+ // One Apply timing line per load, once the CDF deferred state pass has run (or timed out).
+ protected static void EAD_FinishTiming()
+ {
+  bool complete = !s_RestoredEntities && s_aPendingStates && s_aPendingStates.IsEmpty();
+  if (!complete && GetGame())
+  {
+   EAD_CDF.TimingAttempts++;
+   if (EAD_CDF.TimingAttempts < 20) { GetGame().GetCallqueue().CallLater(EAD_FinishTiming, 100, false); return; }
+  }
+  PrintFormat("[CDF TIMING] ambient-destruction apply calls=%1 payload=%2 ownMs=%3 innerMs=%4 slowestOwnMs=%5 complete=%6", EAD_CDF.ApplyCalls, EAD_CDF.ApplyPayload, EAD_CDF.ApplyOwnMs, EAD_CDF.ApplyInnerMs, EAD_CDF.ApplySlowestMs, complete);
+ }
  static void EAD_ResetForWorld()
  {
   if (GetGame()) GetGame().GetCallqueue().Remove(EAD_FinishImport);
@@ -263,7 +337,8 @@ modded class CDF_GMSaveRepair
    if (EAD_CDF.Buildings.Failed || EAD_CDF.Buildings.Finished) break;
   }
   if (EAD_CDF.Buildings.Failed || !EAD_CDF.Buildings.Finished) EAD_CDF.Fail("Saved building replay failed: " + EAD_CDF.Buildings.Reason);
-  PrintFormat("[EAD CDF BUILDINGS] completed=%1 failed=%2 importMs=%3", EAD_CDF.Buildings.Finished, EAD_CDF.Failed, System.GetTickCount() - started);
+  EAD_CDF.HookMs = System.GetTickCount() - started;
+  PrintFormat("[EAD CDF BUILDINGS] completed=%1 failed=%2 importMs=%3", EAD_CDF.Buildings.Finished, EAD_CDF.Failed, EAD_CDF.HookMs);
   if (!EAD_CDF.Failed) return super.RemoveStackedDuplicates(document);
   // Preserve original records before native repair can mutate link indices.
   // Base Restore must receive neither actors nor world/faction edits after failure.

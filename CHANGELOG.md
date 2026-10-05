@@ -1,5 +1,22 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.3 (unreleased)
+
+- Unit Caching: restored AI characters now count for their saved Game Master
+  author, so clearing or deleting restored AI no longer logs
+  `AuthorEntityRemovedServer - This should not happen` or lowers another
+  entity's count. `[EBG CDF AUTHORS]` lines summarise each restore and name any
+  delete whose author is not registered.
+- Unit Caching: after a CDF load, every group that ended without AI is listed
+  (`[EBG CDF EMPTY GROUP]`) with the reason (`never-saved`, `spawn-failed`,
+  `saved-dead`, `not-in-group`) and whether the save held a Unit Caching
+  snapshot for it.
+- Intel Items: restoring carried intel is matched per inventory by prefab (one
+  scan before and one after spawning missing items) and reuses the load's
+  validation instead of parsing every payload twice.
+- All three adapters print `[CDF TIMING]` lines once per load for Restore and
+  Apply, separating their own time from CDF's.
+
 ## 0.1.2
 
 - Ambient Destruction: when a CDF save or load is refused, the Game Master now
