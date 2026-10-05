@@ -1,5 +1,15 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.2
+
+- Ambient Destruction: when a CDF save or load is refused, the Game Master now
+  sees a dialog with the reason instead of only a server log line (CDF itself
+  reports results as hints, which are invisible with hints disabled). A load
+  started while a previous Ambient Destruction import is still running or failed
+  now says so.
+- Requires EXPBG GM Tools 0.1.4, which also lets a saved destroyed building load
+  after a server restart when native mission persistence already removed it.
+
 ## 0.1.1
 
 - First Workshop publication of EXPBG CDF Compat; content identical to 0.1.0.

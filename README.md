@@ -5,9 +5,11 @@ modpack, by M.Pac and K.Edgar. One addon and engine project
 (`07BC942D90324CD9`, Unlisted):
 <https://reforger.armaplatform.com/workshop/07BC942D90324CD9>.
 
-Version 0.1.1 compiles natively against CDF Game Master Save 1.4.1 and EXPBG GM
-Tools; it is an Unlisted testing release whose CDF save/load round trips are not
-yet verified in this combined pack (see [testing](docs/TESTING.md)).
+Version 0.1.2 targets CDF Game Master Save 1.4.1 and EXPBG GM Tools 0.1.4; it is
+an Unlisted testing release. In the first client test (dedicated server, full
+production modset) a CDF save and a load in the same session succeeded; a load
+after a server restart was refused by Ambient Destruction, which GM Tools 0.1.4
+fixes (re-test pending). See [testing](docs/TESTING.md).
 
 It merges the three existing EXPBG CDF companions. Each keeps its own module
 folder under [`addon/`](addon) so it can be maintained on its own; the tooling
@@ -43,7 +45,7 @@ Load all three on the server and every client:
 | Addon | Workshop ID | Notes |
 |---|---|---|
 | Arma Reforger | `58D0FB3206B6F859` | Base game |
-| [EXPBG GM Tools](https://reforger.armaplatform.com/workshop/FC1402F65B2F4A45) | `FC1402F65B2F4A45` | Built against 0.1.2 (`v0.1.2`) |
+| [EXPBG GM Tools](https://reforger.armaplatform.com/workshop/FC1402F65B2F4A45) | `FC1402F65B2F4A45` | Built against 0.1.4 (`v0.1.4`) |
 | [CDF Game Master Save](https://reforger.armaplatform.com/workshop/6A1876F37D65AB09) | `6A1876F37D65AB09` | Targets 1.4.1; separately authored and licensed |
 
 Not the standalone EXPBG GM Optimizer, Intel Items or Ambient Destruction mods.
