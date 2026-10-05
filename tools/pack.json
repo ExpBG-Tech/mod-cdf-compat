@@ -1,0 +1,93 @@
+{
+  "project": "EXPBG_CDF_Compat.gproj",
+  "modules": [
+    {
+      "name": "unit-caching-cdf",
+      "title": "Unit Caching CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-gamemaster-optimizer",
+        "path": "compat/EXPBG_GM_Optimizer_CDF",
+        "commit": "c22b354c83d916497ada7f3bdce16c3ba6e64b71",
+        "tag": "cdf-v0.1.3",
+        "version": "0.1.3",
+        "project": "EXPBG_GM_Optimizer_CDF",
+        "workshopId": "8C5A6D9E73B241F0",
+        "formerParentId": "F3B7C6FB18AB1F79",
+        "formerTitle": "EXPBG GM Optimizer CDF",
+        "note": "Byte-identical at 1ae137de34e1a30bdc7164c179b50e0a34d25c76 (Optimizer 0.1.31, the GM Tools unit-caching source) and in the installed Workshop 0.1.3 data.pak."
+      },
+      "files": {
+        "Scripts/Game/EXPBG/EBG_CDFAuthorRegistration.c": "9658a5bb1c930b7a59e6a7b3b0fad2714c3fdc41",
+        "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": "7ce191ae76fe281b61ca311ea3cff4dc9334a305",
+        "UI/Textures/EXPBG/EXPBG_CDF_Workshop_Banner.png": "da6766ffd8acc81f86aad0f90965babe0dae4730"
+      }
+    },
+    {
+      "name": "intel-items-cdf",
+      "title": "Intel Items CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-intel-items",
+        "path": "compat/EXPBG_Intel_Items_CDF",
+        "commit": "8b947b902f081f3ec140158cd9be70aee02994d5",
+        "tag": "cdf-v0.0.4",
+        "version": "0.0.4",
+        "project": "EXPBG_Intel_Items_CDF",
+        "workshopId": "E110000000000002",
+        "formerParentId": "E110000000000001",
+        "formerTitle": "EXPBG Intel Items - CDF",
+        "note": "Byte-identical at aa08748de50e4b35839bed650951d3b00ff302f3 (the GM Tools intel-items source) and in the installed Workshop 0.0.4 data.pak."
+      },
+      "files": {
+        "Scripts/Game/EXPII/EII_CDFNotices.c": "19ac890ebffdd07dd6208dabf09fb3b6088cf406",
+        "Scripts/Game/EXPII/EII_CDFState.c": "8177c598d764447debdac61cf488229b71c833cb",
+        "UI/Textures/EXPII/EII_CDF_Workshop.edds": "7519e1ed63133806ab7008d5e4f2e8c9a489100a",
+        "UI/Textures/EXPII/EII_CDF_Workshop.edds.meta": "ca2c7713a927bdaac2154ff340e3262508381e3c",
+        "UI/Textures/EXPII/EII_CDF_Workshop.png": "a32b5dc35735b352ff110c9078f0975fd692d727"
+      }
+    },
+    {
+      "name": "ambient-destruction-cdf",
+      "title": "Ambient Destruction CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-ambient-destruction",
+        "path": "compat/CDF",
+        "commit": "d0176bb0f5939e13325012405b162f54ef424497",
+        "version": "0.0.1",
+        "project": "EXPBG_Ambient_Destruction_CDF",
+        "workshopId": "D7A82F4139C60BE5",
+        "formerParentId": "E2A47D19C8B6503F",
+        "formerTitle": "EXPBG Ambient Destruction CDF",
+        "note": "Published bridge 0.0.1 (receipt artifacts/cdf-001-final). Byte-identical at 2d4eb24dab15d9ba9e6ff067e6d0cacbc536e0a9 (v0.0.9, the GM Tools ambient-destruction source) and in the installed Workshop 0.0.1 data.pak. The bridge has no release tag; its version lives in compat/CDF/VERSION."
+      },
+      "files": {
+        "Scripts/Game/EAD_CDF/EAD_CDF.c": "b156cb11da51f61c8661b991c0f6771811cce6a0"
+      }
+    },
+    {
+      "name": "garrison-cdf",
+      "title": "Garrison CDF guard",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. Keeps Garrison Full caching refused while CDF is loaded."
+      }
+    }
+  ],
+  "merge": [],
+  "relocate": {},
+  "dependencies": {
+    "gmTools": {
+      "id": "FC1402F65B2F4A45",
+      "name": "EXPBG GM Tools",
+      "repository": "ExpBG-Tech/mod-gm-tools",
+      "version": "0.1.1",
+      "tag": "v0.1.1",
+      "commit": "08d29f3c88cd359213cdb7c726f5619c5b0b71af"
+    },
+    "cdf": {
+      "id": "6A1876F37D65AB09",
+      "name": "CDF GameMaster Save",
+      "version": "1.4.1",
+      "dataPakSHA256": "B16426E2E9A3D01516347B0A7C2C0E0E8B6CFE59847AA93BD31028AA00D3DE01"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+GameProject {
+ ID "EXPBG_CDF_Compat"
+ GUID "07BC942D90324CD9"
+ TITLE "EXPBG CDF Compat"
+ Dependencies {
+  "58D0FB3206B6F859"
+  "FC1402F65B2F4A45"
+  "6A1876F37D65AB09"
+ }
+ Configurations {
+  GameProjectConfig PC {}
+  GameProjectConfig HEADLESS {}
+ }
+}

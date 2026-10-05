@@ -1,0 +1,21 @@
+MetaFileClass {
+ Name "{E110000000000041}UI/Textures/EXPII/EII_CDF_Workshop.edds"
+ Configurations {
+  PNGResourceClass PC : "{3549C665CAA9A8EA}Configs/System/ResourceTypes/PC/TextureUI.conf" {
+   MaxSize "2048"
+   Conversion None
+  }
+  PNGResourceClass HEADLESS : "{E604D15366D985DF}Configs/System/ResourceTypes/HEADLESS/TextureUI.conf" {
+   MaxSize "512"
+   Conversion None
+  }
+  PNGResourceClass XBOX_ONE : PC {
+  }
+  PNGResourceClass XBOX_SERIES : PC {
+  }
+  PNGResourceClass PS4 : PC {
+  }
+  PNGResourceClass PS5 : PC {
+  }
+ }
+}

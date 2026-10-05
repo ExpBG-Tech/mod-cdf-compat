@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.md text eol=lf
+*.ps1 text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+# Preserve the exact imported Enfusion source/resource bytes, including line endings.
+addon/** -text !eol whitespace=cr-at-eol
+*.png binary
+*.edds binary

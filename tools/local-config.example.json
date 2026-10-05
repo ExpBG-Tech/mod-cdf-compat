@@ -1,0 +1,9 @@
+{
+  "GameRoot": "C:/Program Files (x86)/Steam/steamapps/common/Arma Reforger",
+  "ServerRoot": "C:/Program Files (x86)/Steam/steamapps/common/Arma Reforger Server",
+  "WorkbenchRoot": "C:/Program Files (x86)/Steam/steamapps/common/Arma Reforger Tools/Workbench",
+  "InstalledAddonsRoot": "C:/replace-with-your-game-profile/addons",
+  "IncidentLog": "C:/replace-with-your-private-input/console.log",
+  "BuildAddonsDirectory": "",
+  "DependencyAddonsRoots": "C:/replace-with-your-game-profile/addons;C:/replace-with-your-workbench-profile/addons"
+}

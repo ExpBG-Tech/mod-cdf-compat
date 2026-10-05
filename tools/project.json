@@ -1,0 +1,14 @@
+{
+  "addon": {
+    "name": "EXPBG_CDF_Compat",
+    "source": "addon",
+    "dependencies": ["58D0FB3206B6F859", "FC1402F65B2F4A45", "6A1876F37D65AB09"],
+    "runtimePaths": ["Scripts/Game", "UI"],
+    "preview": "UI/Textures/EXPII/EII_CDF_Workshop.png",
+    "installedDependencies": {
+      "6A1876F37D65AB09": ["CDFGameMasterSave_6A1876F37D65AB09"],
+      "FC1402F65B2F4A45": ["EXPBGGMTools_FC1402F65B2F4A45", "EXPBG_GM_Tools"]
+    }
+  },
+  "legacyPublishWorkflows": []
+}

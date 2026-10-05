@@ -1,0 +1,12 @@
+name: Portable validation
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source and release guards
+        shell: pwsh
+        run: ./tests/Test-Tools.ps1

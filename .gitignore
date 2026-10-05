@@ -1,0 +1,24 @@
+# Local engines, generated assets, credentials and test evidence never belong in Git.
+.local/
+build/
+artifacts/
+evidence/
+**/logs/
+**/profile/
+**/profile-data/
+**/resourceDatabase.rdb
+**/*.log
+**/*.mdmp
+**/*.dmp
+**/*.pak
+**/*.zip
+**/*.private.json
+**/ServerData.json
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+__pycache__/
