@@ -30,7 +30,7 @@ lets Unit Caching Full-cache under CDF, and
 Garrison cache under CDF. The pack does not depend on the standalone EXPBG mods.
 
 EXPBG GM Tools keeps the original module class names, prefab GUIDs and paths.
-At the pinned commit (`v0.1.1`, `08d29f3`) every class, modded class, method and
+At the pinned commit (`v0.1.2`, `8d3ff39`) every class, modded class, method and
 resource the merged scripts use resolves, and no pack path, resource GUID or
 class name repeats one from GM Tools (`tests/Test-DependencyOverlap.ps1`). Resource
 identities used as literals: Unit Caching zone prefab `7E1080ED8F0633FD`,

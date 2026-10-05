@@ -3,7 +3,7 @@
 ## 0.1.0
 
 - EXPBG CDF Compat becomes one addon (`07BC942D90324CD9`, the identity reserved by
-  EXPBG GM Tools) for EXPBG GM Tools 0.1.1 (`FC1402F65B2F4A45`) and CDF Game Master
+  EXPBG GM Tools) for EXPBG GM Tools 0.1.2 (`FC1402F65B2F4A45`) and CDF Game Master
   Save 1.4.1 (`6A1876F37D65AB09`). It merges the published CDF companions, each in
   its own module folder with unchanged script and texture bytes:
   - Unit Caching CDF, formerly EXPBG GM Optimizer CDF 0.1.3 (`cdf-v0.1.3`,

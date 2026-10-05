@@ -79,9 +79,9 @@
       "id": "FC1402F65B2F4A45",
       "name": "EXPBG GM Tools",
       "repository": "ExpBG-Tech/mod-gm-tools",
-      "version": "0.1.1",
-      "tag": "v0.1.1",
-      "commit": "08d29f3c88cd359213cdb7c726f5619c5b0b71af"
+      "version": "0.1.2",
+      "tag": "v0.1.2",
+      "commit": "8d3ff39e1ea6e4b26a2efa56100367bd9622b9dd"
     },
     "cdf": {
       "id": "6A1876F37D65AB09",

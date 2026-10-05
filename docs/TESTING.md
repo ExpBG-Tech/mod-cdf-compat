@@ -6,14 +6,15 @@
   -NonInteractive` exit 0 against installed CDF Game Master Save 1.4.1 and the
   local EXPBG GM Tools build; no `Can't compile` or `SCRIPT (E)`. Only CDF's own
   obsolete `Deserialize` warning and the stock Workbench resource-leak report at
-  teardown. No game session or CDF save/load was run.
+  teardown. Rebuilt against the EXPBG GM Tools 0.1.2 build (`build/local-20261005-115720-872`),
+  same result. No game session or CDF save/load was run.
 
 - `tests/Test-Tools.ps1` (PowerShell 7) passes: repository structure, pack
   assembly (11 files, no merges, no duplicate GUIDs), assembler negative
   fixtures, imported-file provenance (9 files equal their recorded Git blobs and
   the pinned source commits), identity/dependency/Workshop metadata, the
-  Garrison guard, GM Tools overlap and symbol resolution against `v0.1.1`
-  (`08d29f3`), local install, dependency snapshots and release guards.
+  Garrison guard, GM Tools overlap and symbol resolution against `v0.1.2`
+  (`8d3ff39`), local install, dependency snapshots and release guards.
 - The imported scripts and the Intel EDDS are byte-identical to the installed
   published Workshop payloads (Optimizer CDF 0.1.3, Intel Items - CDF 0.0.4,
   Ambient Destruction CDF 0.0.1), extracted read-only from their `data.pak`.
