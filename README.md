@@ -5,8 +5,9 @@ modpack, by M.Pac and K.Edgar. One addon and engine project
 (`07BC942D90324CD9`, Unlisted):
 <https://reforger.armaplatform.com/workshop/07BC942D90324CD9>.
 
-Version 0.1.0 is source only: it has not been compiled natively, published or
-tested in a CDF save/load yet (see [testing](docs/TESTING.md)).
+Version 0.1.0 compiles natively against CDF Game Master Save 1.4.1 and EXPBG GM
+Tools; it is an Unlisted testing release whose CDF save/load round trips are not
+yet verified in this combined pack (see [testing](docs/TESTING.md)).
 
 It merges the three existing EXPBG CDF companions. Each keeps its own module
 folder under [`addon/`](addon) so it can be maintained on its own; the tooling

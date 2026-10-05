@@ -2,7 +2,11 @@
 
 ## 0.1.0 status (2026-10-05)
 
-Portable only. No Workbench, game or server was launched for this version.
+- Native compile (2026-10-05, `build/local-20261005-110226-638`): `./build.ps1
+  -NonInteractive` exit 0 against installed CDF Game Master Save 1.4.1 and the
+  local EXPBG GM Tools build; no `Can't compile` or `SCRIPT (E)`. Only CDF's own
+  obsolete `Deserialize` warning and the stock Workbench resource-leak report at
+  teardown. No game session or CDF save/load was run.
 
 - `tests/Test-Tools.ps1` (PowerShell 7) passes: repository structure, pack
   assembly (11 files, no merges, no duplicate GUIDs), assembler negative
@@ -21,7 +25,7 @@ Portable only. No Workbench, game or server was launched for this version.
 
 | Gate | Required evidence |
 | --- | --- |
-| Native compile | `./build.ps1 -NonInteractive` exit 0 against CDF 1.4.1 and GM Tools 0.1.1; no `Can't compile`, `SCRIPT (E)`, `Multiple declaration`; the receipt names the dependency copies used |
+| Native compile | Passed 2026-10-05 (see above); repeat against the published GM Tools version before each release |
 | Adapter layering | Each adapter's refusal is preserved with all three in one module (capture refusal, restore preflight rejection before clearing) |
 | Unit Caching | Full-cache zones under CDF, export, cold import with clear before load; survivors at captured transforms, casualties not refilled, settings restored |
 | Intel Items | World item and AI/container inventory round trips; title/text/spent/diagnostics; no startup audio on restore |
