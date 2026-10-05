@@ -1,6 +1,7 @@
 #requires -Version 7.0
 # Portable identity and provenance guards for the merged companions:
 # - imported module files are byte-identical to the Git blobs recorded in tools/pack.json;
+#   a file changed here records its imported blob under localChanges.originBlob;
 # - the pack identity, dependencies and Workshop metadata are the reserved ones;
 # - no runtime file still names a standalone parent or companion identity;
 # - CDF save keys and the Garrison Full guard remain in place.
@@ -57,8 +58,10 @@ foreach ($module in $pack.modules) {
   if ($blob -cne $module.files[$relative]) { throw "Imported bytes changed: addon/$($module.name)/$relative" }
   $checked++
   if ($haveSource) {
+   $imported = $module.files[$relative]
+   if ($module.localChanges -and $module.localChanges[$relative]) { $imported = $module.localChanges[$relative].originBlob }
    $original = (& git -C $source rev-parse --verify --quiet "$($module.origin.commit):$($module.origin.path)/$relative" 2>$null)
-   if ($original -cne $module.files[$relative]) { throw "Recorded blob differs from $repositoryName@$($module.origin.commit): $relative" }
+   if ($original -cne $imported) { throw "Recorded blob differs from $repositoryName@$($module.origin.commit): $relative" }
    $sourceChecks++
   }
  }

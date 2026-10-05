@@ -21,7 +21,27 @@ class EAD_CDF
   JsonLoadContext ctx = new JsonLoadContext();
   return ctx.LoadFromString(text) && ctx.ReadValue(key, payload) && ctx.ReadValue("cdfOriginal", original);
  }
- static void Reject(string reason) { Print("[EAD CDF HOLD] " + reason, LogLevel.ERROR); }
+ // First refusal of the current request, shown to the requesting GM with CDF's feedback.
+ static string LastRefusal;
+ static int LastRefusalTick;
+ static const int REFUSAL_WINDOW_MS = 2000;
+ static void Reject(string reason)
+ {
+  Print("[EAD CDF HOLD] " + reason, LogLevel.ERROR);
+  int now = System.GetTickCount();
+  int age = now - LastRefusalTick;
+  if (LastRefusal.IsEmpty() || age < 0 || age > REFUSAL_WINDOW_MS) { LastRefusal = reason; LastRefusalTick = now; }
+ }
+ // CDF sends its save/load result in the same server frame as the refused request.
+ static string TakeRefusal()
+ {
+  string reason = LastRefusal;
+  int age = System.GetTickCount() - LastRefusalTick;
+  LastRefusal = "";
+  if (age < 0 || age > REFUSAL_WINDOW_MS) return "";
+  if (reason.Length() > 1024) reason = reason.Substring(0, 1024);
+  return reason;
+ }
  static void Fail(string reason)
  {
   Failed = true; Reason = reason; Reject(reason);
@@ -114,7 +134,8 @@ modded class CDF_GMSaveRestore
  override static bool Restore(notnull CDF_GMSaveDocument document)
  {
   if (EAD_CDF.ActiveWorld && !EAD_CDF.CurrentWorld()) EAD_ResetForWorld();
-  if (!Replication.IsServer() || EAD_Snapshot.Loading || EAD_CDF.Pending) return false;
+  if (!Replication.IsServer()) return false;
+  if (EAD_Snapshot.Loading || EAD_CDF.Pending) { EAD_CDF.Reject("A previous Ambient Destruction import is still running or failed; wait, or restart the mission before loading"); return false; }
   bool envelope = EAD_CDF.Declared(document.m_sWorldState, "eadBuildings");
   bool hasZone;
   foreach (CDF_GMSaveEntityRecord record : document.m_aEntities)
@@ -250,5 +271,42 @@ modded class CDF_GMSaveRepair
   document.m_sWorldState = "";
   document.m_sFactionState = "";
   return 0;
+ }
+}
+// GM-facing refusal: CDF reports save/load results as hints only (invisible with hints
+// disabled) and never says why EAD refused. Show the EAD reason in a CDF-style dialog.
+modded class SCR_PlayerController
+{
+ override protected void CDF_GMSave_Feedback(notnull CDF_GMSaveResult result)
+ {
+  super.CDF_GMSave_Feedback(result);
+  string action;
+  if (result.m_sKey == "#CDF_GMSave_Msg_LoadAborted") action = "Load";
+  else if (result.m_sKey == "#CDF_GMSave_Msg_CaptureFailed") action = "Save";
+  else return;
+  string reason = EAD_CDF.TakeRefusal();
+  if (reason.IsEmpty()) return;
+  string message = action + " refused by EXPBG Ambient Destruction:\n\n" + reason + "\n\nDetails: [EAD CDF HOLD] in the server log.";
+  // A hosting GM owns this controller locally; an owner RPC would not reach it.
+  if (GetGame().GetPlayerController() == this) EAD_CDF_RpcDo_Refused(message);
+  else Rpc(EAD_CDF_RpcDo_Refused, message);
+ }
+ [RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+ protected void EAD_CDF_RpcDo_Refused(string message)
+ {
+  EAD_CDFRefusalDialog.Open(message);
+ }
+}
+class EAD_CDFRefusalDialog : CDF_GMSaveBaseDialog
+{
+ static void Open(string message)
+ {
+  if (System.IsConsoleApp() || !GetGame() || !GetGame().GetMenuManager()) return;
+  SCR_ConfigurableDialogUiPreset preset = CDF_GMSaveDialogUtils.CreatePreset("EXPBG_EAD_CDF_REFUSED", "#CDF_GMSave_Hint_Title");
+  preset.m_eVisualStyle = EDialogType.WARNING;
+  preset.m_sMessage = message;
+  preset.m_aButtons.Insert(CDF_GMSaveDialogUtils.CreateButtonPreset(SCR_ConfigurableDialogUi.BUTTON_CANCEL, "#CDF_GMSave_Btn_Close", EConfigurableDialogUiButtonAlign.LEFT, "MenuBack"));
+  EAD_CDFRefusalDialog dialog = new EAD_CDFRefusalDialog();
+  CreateByPreset(preset, dialog);
  }
 }

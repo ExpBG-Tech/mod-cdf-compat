@@ -60,7 +60,14 @@
         "note": "Published bridge 0.0.1 (receipt artifacts/cdf-001-final). Byte-identical at 2d4eb24dab15d9ba9e6ff067e6d0cacbc536e0a9 (v0.0.9, the GM Tools ambient-destruction source) and in the installed Workshop 0.0.1 data.pak. The bridge has no release tag; its version lives in compat/CDF/VERSION."
       },
       "files": {
-        "Scripts/Game/EAD_CDF/EAD_CDF.c": "b156cb11da51f61c8661b991c0f6771811cce6a0"
+        "Scripts/Game/EAD_CDF/EAD_CDF.c": "ae192f901ef1568720f146ff19b3ecd3db89b538"
+      },
+      "localChanges": {
+        "Scripts/Game/EAD_CDF/EAD_CDF.c": {
+          "originBlob": "b156cb11da51f61c8661b991c0f6771811cce6a0",
+          "version": "0.1.2",
+          "note": "Changed in this repository: a refused CDF load opens a dialog for the Game Master."
+        }
       }
     },
     {
@@ -79,9 +86,9 @@
       "id": "FC1402F65B2F4A45",
       "name": "EXPBG GM Tools",
       "repository": "ExpBG-Tech/mod-gm-tools",
-      "version": "0.1.2",
-      "tag": "v0.1.2",
-      "commit": "8d3ff39e1ea6e4b26a2efa56100367bd9622b9dd"
+      "version": "0.1.4",
+      "tag": "v0.1.4",
+      "commit": "a73dace24b09c91a837118bad187a91d054c705d"
     },
     "cdf": {
       "id": "6A1876F37D65AB09",
