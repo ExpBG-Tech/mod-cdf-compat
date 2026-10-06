@@ -51,7 +51,7 @@
       },
       "files": {
         "Scripts/Game/EXPII/EII_CDFNotices.c": "19ac890ebffdd07dd6208dabf09fb3b6088cf406",
-        "Scripts/Game/EXPII/EII_CDFState.c": "87d77686fb9e6e8feee21951982ed9adf2680c2f",
+        "Scripts/Game/EXPII/EII_CDFState.c": "d1089545b60ebd39ed2b20ff06cee01d5debe3f1",
         "UI/Textures/EXPII/EII_CDF_Workshop.edds": "7519e1ed63133806ab7008d5e4f2e8c9a489100a",
         "UI/Textures/EXPII/EII_CDF_Workshop.edds.meta": "ca2c7713a927bdaac2154ff340e3262508381e3c",
         "UI/Textures/EXPII/EII_CDF_Workshop.png": "a32b5dc35735b352ff110c9078f0975fd692d727"
@@ -59,8 +59,8 @@
       "localChanges": {
         "Scripts/Game/EXPII/EII_CDFState.c": {
           "originBlob": "8177c598d764447debdac61cf488229b71c833cb",
-          "version": "0.1.3",
-          "note": "Changed in this repository: carried-Intel restore matching bounded per carrier (GUID buckets, one before/after inventory scan); Restore validation and prefab checks reused by Apply; [CDF TIMING] Restore and Apply timing."
+          "version": "0.1.4",
+          "note": "Changed in this repository: carried-Intel restore matching bounded per carrier (GUID buckets, one before/after inventory scan); Restore validation and prefab checks reused by Apply; [CDF TIMING] Restore and Apply timing (0.1.3). GM Tools server racks and USB drives saved and restored through an outer \"eirIntel\" envelope with its own rack/drive prefab whitelist (rack title, text, download seconds and diagnostics; drive intel in the world and in captured inventories; carried drives handled like carried Intel); records without the envelope load as before (0.1.4)."
         }
       }
     },
@@ -96,6 +96,30 @@
         "repository": "ExpBG-Tech/mod-cdf-compat",
         "note": "Developed in this repository. Keeps Garrison Full caching refused while CDF is loaded."
       }
+    },
+    {
+      "name": "unit-dialog-cdf",
+      "title": "Unit Dialog CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. Saves each Unit Dialog AI's speaker name, dialog lines and talking gesture in its CDF state and restores them through EUD_RestoreState; invalid dialog state is refused before CDF clears the scene."
+      }
+    },
+    {
+      "name": "ai-global-skills-cdf",
+      "title": "AI Global Skills CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. A CDF load restores exactly the saved AI Global Skills settings (vanilla before the first saved module value; vanilla when the load restores no module), and a session save keeps each AI group's combat mode from before the EXPBG rules of engagement changed it."
+      }
+    },
+    {
+      "name": "ai-surrender-cdf",
+      "title": "AI Surrender CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. Prisoners are session-only under CDF: they are left out of every CDF save, and a CDF load removes the prisoners whose squad CDF manages (recorded at surrender) and releases their interrogation points."
+      }
     }
   ],
   "merge": [],
@@ -105,9 +129,9 @@
       "id": "FC1402F65B2F4A45",
       "name": "EXPBG GM Tools",
       "repository": "ExpBG-Tech/mod-gm-tools",
-      "version": "0.1.5",
-      "tag": "v0.1.5",
-      "commit": "dd0cb9150dfa00063ef12c8ec1921f5eaab40c9d"
+      "version": "0.1.7",
+      "tag": "v0.1.7",
+      "commit": "cd4f171f49d480fdd7a3bf677ee9c943f5e5b633"
     },
     "cdf": {
       "id": "6A1876F37D65AB09",

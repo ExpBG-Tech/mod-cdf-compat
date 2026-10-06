@@ -1,5 +1,27 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.4
+
+- Built against EXPBG GM Tools 0.1.7.
+- Unit Dialog (new module `unit-dialog-cdf`): each AI's speaker name, dialog
+  lines and talking gesture are saved with the CDF-saved character and restored
+  on load. Invalid dialog data is refused before CDF clears the scene ("Save/Load
+  refused by EXPBG Unit Dialog: <reason>", `[EUD CDF HOLD]`). Units inside a
+  Full-cached squad do not keep their dialog through CDF.
+- Intel Items: server racks and USB drives keep their title, text, download time
+  and drive contents through CDF save/load (also racks placed in the world
+  editor). Saves with intel only are unchanged.
+- AI Global Skills (new module `ai-global-skills-cdf`): a load restores exactly
+  the saved settings (the session's newer values no longer leak in), a load
+  without a module resets to vanilla, and each group's original combat mode is
+  kept so Vanilla ROE or deleting the module restores it.
+- AI Surrender (new module `ai-surrender-cdf`): prisoners removed by a CDF load
+  are released from the surrender bookkeeping (`[ESR CDF] N prisoners removed by
+  the CDF load`).
+- Release housekeeping: after a successful publish, old heavy build and release
+  payloads move to the configured archive (`ArchiveRoot` in `.local/config.json`);
+  receipts and logs stay. Nothing is deleted except by an explicit `-Purge`.
+
 ## 0.1.3
 
 - Built against EXPBG GM Tools 0.1.5.

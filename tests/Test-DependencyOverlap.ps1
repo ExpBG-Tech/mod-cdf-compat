@@ -48,7 +48,7 @@ foreach ($match in [regex]::Matches($gmMeta, 'Name\s+"\{([A-Fa-f0-9]{16})\}([^"\
 $gmClasses = @{}
 foreach ($match in [regex]::Matches($gmScripts, '(?m)^\s*class\s+(\w+)')) { $gmClasses[$match.Groups[1].Value] = $true }
 $gmWords = @{}
-foreach ($match in [regex]::Matches($gmScripts, '\b(?:EBG|EII|EAD|EXPG|EAC|EAS)_\w+')) { $gmWords[$match.Value] = $true }
+foreach ($match in [regex]::Matches($gmScripts, '\b(?:EBG|EII|EAD|EXPG|EAC|EAS|EUD|EIR|ESR|EGS|EAU|EUS|EBM)_\w+')) { $gmWords[$match.Value] = $true }
 
 # This pack, assembled exactly as build and release assemble it.
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ('expbg-cdf-overlap-' + [guid]::NewGuid().ToString('N'))
@@ -74,12 +74,12 @@ try {
  }
  # Names declared here: classes, methods, fields and locals introduced by a type token.
  foreach ($match in [regex]::Matches($scripts, '(?m)^\s*(?:(?:override|protected|private|static|ref|const)\s+)*[A-Za-z_]\w*(?:<[^>\r\n]*>)?\s+([A-Za-z_]\w*)\s*[(;=,]')) { $declared[$match.Groups[1].Value] = $true }
- foreach ($match in [regex]::Matches($scripts, '(?m)^\s*modded\s+class\s+((?:EBG|EII|EAD|EXPG)_\w+)')) {
+ foreach ($match in [regex]::Matches($scripts, '(?m)^\s*modded\s+class\s+((?:EBG|EII|EAD|EXPG|EUD|EIR|ESR|EGS|EAU|EUS|EBM)_\w+)')) {
   if (!$gmClasses.ContainsKey($match.Groups[1].Value)) { $problems.Add("Modded class $($match.Groups[1].Value) does not exist in GM Tools") }
  }
  # Resource references are checked separately below; their file names are not symbols.
  $symbols = [regex]::Replace($scripts, '\{[A-F0-9]{16}\}[A-Za-z0-9_./-]+', '')
- foreach ($word in @([regex]::Matches($symbols, '\b(?:EBG|EII|EAD|EXPG)_\w+') | ForEach-Object Value | Select-Object -Unique)) {
+ foreach ($word in @([regex]::Matches($symbols, '\b(?:EBG|EII|EAD|EXPG|EUD|EIR|ESR|EGS|EAU|EUS|EBM)_\w+') | ForEach-Object Value | Select-Object -Unique)) {
   if (!$gmWords.ContainsKey($word) -and !$declared.ContainsKey($word)) { $problems.Add("Symbol $word is neither in GM Tools nor declared here") }
  }
  foreach ($match in [regex]::Matches($scripts, '\{([A-F0-9]{16})\}([A-Za-z0-9_./-]+)')) {

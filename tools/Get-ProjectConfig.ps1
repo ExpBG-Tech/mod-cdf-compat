@@ -9,6 +9,8 @@ function Assert-RelativePath([string]$Path) {
 }
 if ($config -isnot [System.Collections.IDictionary] -or $config.addon -isnot [System.Collections.IDictionary]) { throw 'Project configuration requires an addon object.' }
 if ($asset.id -cnotmatch '^[A-F0-9]{16}$' -or !$asset.name -or $asset.unlisted -isnot [bool] -or $asset.private -isnot [bool]) { throw 'Workshop metadata requires an item GUID, name and explicit visibility.' }
+# The Publish form refuses a summary over 200 characters.
+if (([string]$asset.summary).Length -gt 200) { throw "Workshop summary is $(([string]$asset.summary).Length) characters; the Workshop allows at most 200." }
 $config.addon.id = $asset.id
 # A pack assembles its module folders (tools/pack.json) into one engine project.
 $config.addon.assembled = Test-Path -LiteralPath (Join-Path $repoPath 'tools/pack.json') -PathType Leaf
