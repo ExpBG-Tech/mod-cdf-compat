@@ -5,7 +5,7 @@ modpack, by M.Pac and K.Edgar. One addon and engine project
 (`07BC942D90324CD9`, Unlisted):
 <https://reforger.armaplatform.com/workshop/07BC942D90324CD9>.
 
-Version 0.1.4 targets CDF Game Master Save 1.4.1 and EXPBG GM Tools 0.1.7; it is
+Version 0.1.5 targets CDF Game Master Save 1.4.1 and EXPBG GM Tools 0.1.8; it is
 an Unlisted testing release. In the first client test (dedicated server, full
 production modset) a CDF save and a load in the same session succeeded; a load
 after a server restart was refused by Ambient Destruction, which GM Tools 0.1.4
@@ -21,6 +21,9 @@ assembles them into one project, the same way EXPBG GM Tools is built.
 | Intel Items CDF | `addon/intel-items-cdf` | `mod-intel-items` CDF companion 0.0.4 |
 | Ambient Destruction CDF | `addon/ambient-destruction-cdf` | `mod-ambient-destruction` CDF bridge 0.0.1 |
 | Garrison CDF guard | `addon/garrison-cdf` | Developed here |
+| Unit Dialog CDF | `addon/unit-dialog-cdf` | Developed here (0.1.4) |
+| AI Global Skills CDF | `addon/ai-global-skills-cdf` | Developed here (0.1.4) |
+| AI Surrender CDF | `addon/ai-surrender-cdf` | Developed here (0.1.4) |
 
 Exact source commits, Git blob IDs of every imported file and the former
 Workshop IDs are recorded in [`tools/pack.json`](tools/pack.json). Imported
@@ -45,7 +48,7 @@ Load all three on the server and every client:
 | Addon | Workshop ID | Notes |
 |---|---|---|
 | Arma Reforger | `58D0FB3206B6F859` | Base game |
-| [EXPBG GM Tools](https://reforger.armaplatform.com/workshop/FC1402F65B2F4A45) | `FC1402F65B2F4A45` | Built against 0.1.7 (`v0.1.7`) |
+| [EXPBG GM Tools](https://reforger.armaplatform.com/workshop/FC1402F65B2F4A45) | `FC1402F65B2F4A45` | Built against 0.1.8 (`v0.1.8`) |
 | [CDF Game Master Save](https://reforger.armaplatform.com/workshop/6A1876F37D65AB09) | `6A1876F37D65AB09` | Targets 1.4.1; separately authored and licensed |
 
 Not the standalone EXPBG GM Optimizer, Intel Items or Ambient Destruction mods.
@@ -120,13 +123,15 @@ With the pack loaded:
   is never written. A clear-before-load deletes the garrison group like any
   other squad; the garrison discards the missing snapshots and releases without
   recreating anyone. An append load leaves it running.
-- **Full**: refused while CDF is loaded. The garrison stays awake and reports
-  *Full cache held: CDF saves cannot keep Garrison Full survivors. Choose
-  Simulation or Off.* Garrison Full records are outside Unit Caching's records,
-  so no CDF bridge exports them, and a clear-before-load would leave the record
-  holding recovery for the rest of the session (blocking every later save) or
-  respawn the cached survivors into the loaded scene. Full is the GM Tools
-  default, so set garrisons to Simulation or Off when CDF is in use.
+- **Full**: never runs while CDF is loaded. Garrison Full records are outside
+  Unit Caching's records, so no CDF bridge exports them, and a clear-before-load
+  would leave the record holding recovery for the rest of the session (blocking
+  every later save) or respawn the cached survivors into the loaded scene. GM
+  Tools 0.1.8 and later cache a garrison set to Full (the default) in
+  Simulation instead, as above, with the status *Simulation cached (CDF
+  loaded)*; the Full choice is kept. With an older GM Tools this pack's guard
+  holds Full and the garrison stays awake (*Full cache held: ... Update GM
+  Tools, or choose Simulation or Off.*).
 
 Before a CDF save (CDF autosaves are refused too while a garrison is active), use
 the Unit Caching controller's **Prepare for save** and wait for **Ready**: it

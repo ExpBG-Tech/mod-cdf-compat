@@ -1,5 +1,16 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.5
+
+- Built against EXPBG GM Tools 0.1.8.
+- Garrison: GM Tools 0.1.8 caches garrisons set to Full in Simulation while CDF
+  is loaded ("Simulation cached (CDF loaded)"), so the Garrison guard no longer
+  fires with it. Next to an older GM Tools (0.1.7) the pack still loads and the
+  guard still holds Full, now saying to update GM Tools, or choose Simulation
+  or Off. The Workshop description says the same.
+- Tests: the GM Tools overlap check also requires every method this pack
+  overrides in a GM Tools class to exist there with the same signature.
+
 ## 0.1.4
 
 - Built against EXPBG GM Tools 0.1.7.

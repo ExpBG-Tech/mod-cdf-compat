@@ -31,7 +31,7 @@
 | Unit Caching | Full-cache zones under CDF, export, cold import with clear before load; survivors at captured transforms, casualties not refilled, settings restored |
 | Intel Items | World item and AI/container inventory round trips; title/text/spent/diagnostics; no startup audio on restore |
 | Ambient Destruction | Exact scenery and building ledger replay with `clearBeforeLoad` and `repairDuplicatesOnLoad`; rejection when either is off |
-| Garrison | Full selected under CDF reports the hold and keeps actors awake; Simulation sleep/wake; CDF save refused while a garrison is active; Prepare for Save releases garrisons, then save; clear-before-load with a Simulation-cached garrison releases it without recreating soldiers |
+| Garrison | Full selected under CDF: with GM Tools 0.1.8 it caches in Simulation with the status "Simulation cached (CDF loaded)" and the guard never reports; with GM Tools 0.1.7 the guard reports the hold and keeps actors awake; Simulation sleep/wake; CDF save refused while a garrison is active; Prepare for Save releases garrisons, then save; clear-before-load with a Simulation-cached garrison releases it without recreating soldiers |
 | Older saves | A document written with the standalone mods and companions loads with GM Tools and this pack; a GM Tools-only document with Intel or Destruction rejects before clearing |
 | Multiplayer | Dedicated server and client with the same frozen modset |
 | Publication | Immutable `v0.1.1` tag (0.1.0 retired: its Publish Project step timed out before upload), Workbench Publish Project (first publication), Unlisted APL-SA listing, five package files and hashes |

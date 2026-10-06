@@ -30,9 +30,12 @@ lets Unit Caching Full-cache under CDF, and
 Garrison cache under CDF. The pack does not depend on the standalone EXPBG mods.
 
 EXPBG GM Tools keeps the original module class names, prefab GUIDs and paths.
-At the pinned commit (`v0.1.2`, `8d3ff39`) every class, modded class, method and
-resource the merged scripts use resolves, and no pack path, resource GUID or
-class name repeats one from GM Tools (`tests/Test-DependencyOverlap.ps1`). Resource
+At the GM Tools commit pinned in `tools/pack.json` every class, modded class,
+method and resource the merged scripts use resolves, every override in a modded
+GM Tools class matches a method GM Tools declares (same static, return and
+parameter types; an override of a removed method breaks the whole Game module
+compile), and no pack path, resource GUID or class name repeats one from GM
+Tools (`tests/Test-DependencyOverlap.ps1`). Resource
 identities used as literals: Unit Caching zone prefab `7E1080ED8F0633FD`,
 Ambient Destruction zone prefab `EAD1000000000010`, the seven Intel Items prefabs
 (`EII_CDFState.c`), and the CDF addon `6A1876F37D65AB09` in the Garrison guard.
@@ -108,12 +111,22 @@ is deleted and the garrison continues.
 
 Decision: `EXPG_CDFGarrisonGuard.c` mods `EXPG_GarrisonManager.TryFullSleep`.
 While CDF (`6A1876F37D65AB09`) is loaded it reports "Full cache held: CDF saves
-cannot keep Garrison Full survivors. Choose Simulation or Off." and returns
-before any deletion; otherwise it calls the original. It does not change the
-GM-selected mode, Simulation, wake/sleep or release. Because the pack depends on
-CDF, Garrison Full is effectively off whenever the pack is loaded. Real Garrison
+cannot keep Garrison Full survivors and this EXPBG GM Tools has no Simulation
+fallback. Update GM Tools, or choose Simulation or Off." and returns before any
+deletion; otherwise it calls the original. It does not change the GM-selected
+mode, Simulation, wake/sleep or release. Because the pack depends on CDF,
+Garrison Full is effectively off whenever the pack is loaded. Real Garrison
 persistence would need a portable garrison ledger (building identity, posts,
 patrol state, survivor snapshots) in the CDF document and is not attempted.
+
+Since GM Tools 0.1.8, `EXPG_GarrisonManager.CacheModeInUse` itself runs a
+garrison set to Full in Simulation while CDF is loaded (status "Simulation
+cached (CDF loaded)"), so `TryFullSleep` is not reached under CDF and the guard
+is a backstop that reports only next to an older GM Tools. Each state through a
+CDF save and load: awake and Simulation-cached garrisons block the save (Prepare
+for Save restores and releases them first); a clear-before-load deletes the
+Simulation originals with their group and the garrison releases without
+recreating anyone; an append load leaves the garrison running.
 
 ## Native builds and dependencies
 

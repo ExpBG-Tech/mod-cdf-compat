@@ -12,6 +12,9 @@
 // are respawned into the newly loaded scene. Keep Full refused while CDF is loaded.
 // Simulation keeps the original actors and group in the world; CDF Clear deletes them
 // like any ordinary squad and the garrison releases without recreating anyone.
+// GM Tools 0.1.8 and later cache a garrison set to Full in Simulation while CDF is
+// loaded and never reach TryFullSleep then; this guard stays as the backstop and
+// only reports when an older GM Tools without that fallback is loaded.
 modded class EXPG_GarrisonManager
 {
  override protected void TryFullSleep(EXPG_GarrisonRecord record)
@@ -20,7 +23,7 @@ modded class EXPG_GarrisonManager
   GameProject.GetLoadedAddons(addons);
   if (addons.Contains("6A1876F37D65AB09"))
   {
-   record.Report("Full cache held: CDF saves cannot keep Garrison Full survivors. Choose Simulation or Off.");
+   record.Report("Full cache held: CDF saves cannot keep Garrison Full survivors and this EXPBG GM Tools has no Simulation fallback. Update GM Tools, or choose Simulation or Off.");
    return;
   }
   super.TryFullSleep(record);
