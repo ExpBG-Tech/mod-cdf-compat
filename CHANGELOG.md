@@ -1,7 +1,8 @@
 # EXPBG CDF Compat changelog
 
-## 0.1.3 (unreleased)
+## 0.1.3
 
+- Built against EXPBG GM Tools 0.1.5.
 - Unit Caching: restored AI characters now count for their saved Game Master
   author, so clearing or deleting restored AI no longer logs
   `AuthorEntityRemovedServer - This should not happen` or lowers another
