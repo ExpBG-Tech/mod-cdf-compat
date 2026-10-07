@@ -314,7 +314,11 @@ modded class CDF_GMSaveRestore
   {
    GetGame().GetCallqueue().Remove(FinishRestore);
    GetGame().GetCallqueue().Remove(EBG_FinishPortableImport);
+   GetGame().GetCallqueue().Remove(EBG_CDFAuthors.PrintUnregistered);
   }
+  // Flush the pending unregistered-author summary now: it clears both maps, so the next
+  // such delete schedules a fresh window instead of the diagnostic going silent (0.1.8).
+  EBG_CDFAuthors.PrintUnregistered();
   EBG_CDFCacheState.Reset();
  }
  override protected static void FinishRestore()

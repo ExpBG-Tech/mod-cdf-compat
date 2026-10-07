@@ -15,8 +15,16 @@ class EII_CDFItem
   diagnostics = intel.GetDebug();
   intel.Trace("CDF captured");
  }
+ // Prefilter for the Intel, rack and drive whitelists (0.1.8): every whitelisted path contains
+ // "/EXPII/" and every GUID form is 18 characters, so false only where no whitelist can match.
+ static bool EII_MaybeExpii(string resource)
+ {
+  return resource.Length() == 18 || resource.Contains("/EXPII/");
+ }
  static string GetIntelGuid(string resource)
  {
+  if (!EII_MaybeExpii(resource))
+   return string.Empty;
   array<string> prefabs = {
    "{D3DCA7AB761413C6}PrefabsEditable/EXPII/EII_ManualUS.et",
    "{7E8D916D8F449094}PrefabsEditable/EXPII/EII_ManualSoviet.et",
@@ -56,22 +64,15 @@ class EII_CDFPayload
  int version = 1;
  ref EII_CDFItem item;
  ref array<ref EII_CDFItem> inventory = {};
- bool CaptureInventory(array<IEntity> items)
+ // One carried Intel item, in GetItems order; Capture dedupes entities (0.1.8: one pass with
+ // carried drives). Reject, never truncate: do not allocate or serialize an oversized payload.
+ bool AddCarried(EII_IntelComponent intel)
  {
-  // Track only Intel; ordinary cargo must not grow duplicate-check work.
-  set<IEntity> visited = new set<IEntity>();
-  foreach (IEntity entity : items)
-  {
-   if (!entity) continue;
-   EII_IntelComponent intel = EII_IntelComponent.Cast(entity.FindComponent(EII_IntelComponent));
-   if (!intel || visited.Contains(entity)) continue;
-   // Reject, never truncate: do not allocate or serialize an oversized payload.
-   if (inventory.Count() >= INVENTORY_LIMIT) return false;
-   visited.Insert(entity);
-   EII_CDFItem record = new EII_CDFItem();
-   record.Capture(intel);
-   inventory.Insert(record);
-  }
+  if (inventory.Count() >= INVENTORY_LIMIT)
+   return false;
+  EII_CDFItem record = new EII_CDFItem();
+  record.Capture(intel);
+  inventory.Insert(record);
   return true;
  }
  bool Valid()
@@ -165,10 +166,9 @@ class EII_CDFRackPayload
  ref EII_CDFDrive drive;
  ref array<ref EII_CDFDrive> drives = {};
  // The captured entity itself: a whitelisted rack, or a whitelisted drive outside any inventory.
- void CaptureEntity(IEntity entity)
+ // Capture resolves both components and allocates this payload only for a rack or a drive (0.1.8).
+ void CaptureEntity(IEntity entity, EIR_RackComponent rackComponent, EIR_DriveComponent driveComponent)
  {
-  EIR_RackComponent rackComponent = EIR_RackComponent.Cast(entity.FindComponent(EIR_RackComponent));
-  EIR_DriveComponent driveComponent = EIR_DriveComponent.Cast(entity.FindComponent(EIR_DriveComponent));
   // Only racks and drives pay for the prefab lookup; every other record skips it.
   if (!rackComponent && !driveComponent) return;
   string resource = EII_CDFRackBridge.PrefabOf(entity);
@@ -183,24 +183,15 @@ class EII_CDFRackPayload
    drive.Capture(resource, driveComponent);
   }
  }
- // Carried drives holding intel; CDF itself restores empty drives as ordinary cargo.
- bool CaptureInventory(array<IEntity> items)
+ // One carried, whitelisted drive holding intel, in GetItems order; Capture checks the rest
+ // (CDF itself restores empty drives as ordinary cargo). Reject, never truncate, like Intel.
+ bool AddCarried(string resource, EIR_DriveComponent component)
  {
-  set<IEntity> visited = new set<IEntity>();
-  foreach (IEntity entity : items)
-  {
-   if (!entity) continue;
-   EIR_DriveComponent component = EIR_DriveComponent.Cast(entity.FindComponent(EIR_DriveComponent));
-   if (!component || component.IsEmpty() || visited.Contains(entity)) continue;
-   string resource = EII_CDFRackBridge.PrefabOf(entity);
-   if (EII_CDFRackBridge.GetDriveGuid(resource).IsEmpty()) continue;
-   // Reject, never truncate, like carried Intel.
-   if (drives.Count() >= INVENTORY_LIMIT) return false;
-   visited.Insert(entity);
-   EII_CDFDrive record = new EII_CDFDrive();
-   record.Capture(resource, component);
-   drives.Insert(record);
-  }
+  if (drives.Count() >= INVENTORY_LIMIT)
+   return false;
+  EII_CDFDrive record = new EII_CDFDrive();
+  record.Capture(resource, component);
+  drives.Insert(record);
   return true;
  }
  bool Valid()
@@ -255,6 +246,8 @@ class EII_CDFRackBridge
  }
  static string GetRackGuid(string resource)
  {
+  if (!EII_CDFItem.EII_MaybeExpii(resource))
+   return string.Empty;
   array<string> prefabs = {
    "{67558101DE7E37AA}Prefabs/EXPII/EIR_ServerRack_Base.et",
    "{AF2266B64D5D4750}PrefabsEditable/EXPII/EIR_ServerRackA.et",
@@ -264,6 +257,8 @@ class EII_CDFRackBridge
  }
  static string GetDriveGuid(string resource)
  {
+  if (!EII_CDFItem.EII_MaybeExpii(resource))
+   return string.Empty;
   array<string> prefabs = {
    "{74CA7EB748CF82EC}PrefabsEditable/EXPII/EIR_USBDrive.et"
   };
@@ -477,12 +472,21 @@ modded class CDF_GMSaveState
  {
   string original = super.Capture(entity);
   if (!entity) return original;
-  EII_CDFPayload payload = new EII_CDFPayload();
-  EII_CDFRackPayload storage = new EII_CDFRackPayload();
-  storage.CaptureEntity(entity);
+  // 0.1.8: nothing is allocated until an Intel item, rack or drive is found (most records
+  // hold none); Wrap(null, inner) returns inner, so such records keep their state as before.
+  EII_CDFPayload payload;
+  EII_CDFRackPayload storage;
+  EIR_RackComponent rackComponent = EIR_RackComponent.Cast(entity.FindComponent(EIR_RackComponent));
+  EIR_DriveComponent driveComponent = EIR_DriveComponent.Cast(entity.FindComponent(EIR_DriveComponent));
+  if (rackComponent || driveComponent)
+  {
+   storage = new EII_CDFRackPayload();
+   storage.CaptureEntity(entity, rackComponent, driveComponent);
+  }
   EII_IntelComponent intel = EII_IntelComponent.Cast(entity.FindComponent(EII_IntelComponent));
   if (intel)
   {
+   payload = new EII_CDFPayload();
    payload.item = new EII_CDFItem();
    payload.item.Capture(intel);
   }
@@ -492,14 +496,47 @@ modded class CDF_GMSaveState
   {
    array<IEntity> items = {};
    manager.GetItems(items, EStoragePurpose.PURPOSE_ANY);
-   if (!payload.CaptureInventory(items)) return "{\"eiiIntel\":{\"version\":0}}";
-   if (!storage.CaptureInventory(items))
+   // One pass for carried Intel and carried drives, in GetItems order (restore matching
+   // assigns same-GUID instances in that order). Too much Intel refuses at once, as when
+   // the drive pass never ran after it; too many drives is refused after the pass, so too
+   // much Intel anywhere in the inventory still takes precedence.
+   set<IEntity> intelSeen;
+   set<IEntity> drivesSeen;
+   bool tooManyDrives = false;
+   foreach (IEntity carried : items)
+   {
+    if (!carried) continue;
+    EII_IntelComponent carriedIntel = EII_IntelComponent.Cast(carried.FindComponent(EII_IntelComponent));
+    if (carriedIntel && (!intelSeen || !intelSeen.Contains(carried)))
+    {
+     if (!payload) payload = new EII_CDFPayload();
+     if (!payload.AddCarried(carriedIntel))
+      return "{\"eiiIntel\":{\"version\":0}}";
+     if (!intelSeen) intelSeen = new set<IEntity>();
+     intelSeen.Insert(carried);
+    }
+    if (tooManyDrives) continue;
+    EIR_DriveComponent carriedDrive = EIR_DriveComponent.Cast(carried.FindComponent(EIR_DriveComponent));
+    if (!carriedDrive || carriedDrive.IsEmpty() || (drivesSeen && drivesSeen.Contains(carried))) continue;
+    string resource = EII_CDFRackBridge.PrefabOf(carried);
+    if (EII_CDFRackBridge.GetDriveGuid(resource).IsEmpty()) continue;
+    if (!storage) storage = new EII_CDFRackPayload();
+    if (!storage.AddCarried(resource, carriedDrive))
+    {
+     tooManyDrives = true;
+     continue;
+    }
+    if (!drivesSeen) drivesSeen = new set<IEntity>();
+    drivesSeen.Insert(carried);
+   }
+   if (tooManyDrives)
    {
     EII_CDFLoad.Refuse("more than 400 USB drives holding intel in one inventory");
     return "{\"eirIntel\":{\"version\":0}}";
    }
   }
-  if (!payload.item && payload.inventory.IsEmpty()) return EII_CDFRackPayload.Wrap(storage, original);
+  if (!payload || (!payload.item && payload.inventory.IsEmpty()))
+   return EII_CDFRackPayload.Wrap(storage, original);
   JsonSaveContext context = new JsonSaveContext();
   // Keep the marker on encoding failure so document validation also rejects carriers.
   if (!context.WriteValue("eiiIntel", payload) || !context.WriteValue("cdfState", original))

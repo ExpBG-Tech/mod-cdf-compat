@@ -1,5 +1,21 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.8
+
+- Intel Items CDF: CDF saves cost less. Each captured entity allocates nothing
+  until it holds intel, a server rack or a USB drive, and a captured inventory
+  is walked once for carried intel and carried drives instead of twice. The
+  saved records, their order and the refusals (more than 400 intel items or
+  drives in one inventory) are unchanged. The intel, rack and drive prefab
+  checks skip their prefab lists for any record that is not an EXPII prefab.
+- Unit Caching CDF: the `[EBG CDF AUTHORS]` warning about deletes of entities
+  whose author is not registered sums up to 30 s (it was one line per frame,
+  about one per entity under Full caching) and says so; world cleanup prints
+  any pending summary at once.
+- Portable guard `tests/Test-CdfPerformance.ps1`: the prefab-check shortcut
+  matches every whitelisted path and GUID, the single inventory pass keeps
+  its order and refusals, and the warning window is flushed at world cleanup.
+
 ## 0.1.7
 
 - Built against EXPBG GM Tools 0.1.14 (pinned in `tools/pack.json`).

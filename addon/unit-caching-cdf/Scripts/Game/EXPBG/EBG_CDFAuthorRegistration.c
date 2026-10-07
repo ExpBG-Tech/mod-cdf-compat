@@ -10,9 +10,11 @@ class EBG_CDFAuthors
  static const int REGISTERED = 0;
  static const int ALREADY_COUNTED = 1;
  static const int LOST = 2;
- // Deletes of an unregistered author, keyed by type and bookkeeping; printed once per frame.
+ // Deletes of an unregistered author, keyed by type and bookkeeping; summed over a 30 s window
+ // (0.1.8; was one line per frame, about one per entity under Full caching) and flushed at world cleanup.
  static ref map<string, int> Unregistered = new map<string, int>();
  static ref map<string, string> UnregisteredPrefab = new map<string, string>();
+ static const int UNREGISTERED_WINDOW_MS = 30000;
  static void Reset()
  {
   Restoring = false;
@@ -50,7 +52,7 @@ class EBG_CDFAuthors
  }
  static void NoteUnregisteredDelete(string key, string prefab)
  {
-  if (Unregistered.IsEmpty() && GetGame()) GetGame().GetCallqueue().CallLater(PrintUnregistered, 0, false);
+  if (Unregistered.IsEmpty() && GetGame()) GetGame().GetCallqueue().CallLater(PrintUnregistered, UNREGISTERED_WINDOW_MS, false);
   Unregistered.Set(key, Unregistered.Get(key) + 1);
   if (!UnregisteredPrefab.Contains(key)) UnregisteredPrefab.Set(key, prefab);
  }
@@ -65,7 +67,7 @@ class EBG_CDFAuthors
   }
   Unregistered.Clear();
   UnregisteredPrefab.Clear();
-  if (total > 0) Print(string.Format("[EBG CDF AUTHORS] %1 deletes of entities whose author is not registered", total) + details, LogLevel.WARNING);
+  if (total > 0) Print(string.Format("[EBG CDF AUTHORS] %1 deletes of entities whose author is not registered (within %2 s)", total, UNREGISTERED_WINDOW_MS / 1000) + details, LogLevel.WARNING);
  }
 }
 [BaseContainerProps(configRoot: true)]
