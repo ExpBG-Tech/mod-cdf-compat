@@ -133,6 +133,9 @@ try {
 } finally {
  if ($process.HasExited) { Remove-CdfLink }
  $receipt | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$run/result.json"
+ # The addon copies (about 1 GB per run) are only inputs; once the engine is gone and the CDF
+ # junction is removed, only the logs, saves and receipts are kept.
+ if ($process.HasExited -and !(Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $addons)) { Remove-Item -LiteralPath $addons -Recurse -Force -ErrorAction SilentlyContinue }
 }
 if (!$receipt.passed) { throw "CDF round-trip fixture not passed; inspect $run" }
 "PASS: in-process CDF capture, file round trip, refusals and clearBeforeLoad restore of garrisons in one diagnostic server. No GM UI, cold restart or multiplayer. Evidence: $run"
