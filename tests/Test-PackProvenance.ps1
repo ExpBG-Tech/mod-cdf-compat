@@ -4,7 +4,7 @@
 #   a file changed here records its imported blob under localChanges.originBlob;
 # - the pack identity, dependencies and Workshop metadata are the reserved ones;
 # - no runtime file still names a standalone parent or companion identity;
-# - CDF save keys and the Garrison Full guard remain in place.
+# - CDF save keys and the Garrison ledger bridge remain in place.
 # When the source repositories are checked out beside this one (or EXPBG_SOURCES_ROOT names
 # their parent directory), the recorded blobs are also checked against the pinned commits.
 $ErrorActionPreference = 'Stop'
@@ -23,7 +23,10 @@ if (@(Compare-Object @($project.addon.dependencies) @($base,$gmTools,$cdf) -Case
 if ((@($project.addon.installedDependencies.Keys | Sort-Object) -join ',') -cne (@($cdf,$gmTools | Sort-Object) -join ',')) { throw 'Native builds must snapshot CDF and EXPBG GM Tools.' }
 $gproj = Get-Content -LiteralPath "$repo/addon/$($pack.project)" -Raw
 if ($gproj -cnotmatch ('\bGUID\s+"' + $reserved + '"') -or $gproj -cnotmatch 'TITLE\s+"EXPBG CDF Compat"') { throw 'Project file identity differs.' }
-if ($pack.dependencies.gmTools.id -cne $gmTools -or $pack.dependencies.cdf.id -cne $cdf -or $pack.dependencies.gmTools.commit -cnotmatch '^[0-9a-f]{40}$') { throw 'Pinned dependency metadata is incomplete.' }
+if ($pack.dependencies.gmTools.id -cne $gmTools -or $pack.dependencies.cdf.id -cne $cdf -or $pack.dependencies.gmTools.commit -cnotmatch '^([0-9a-f]{40}|PENDING)$') { throw 'Pinned dependency metadata is incomplete.' }
+# PENDING: the GM Tools release this pack needs is not tagged yet; the orchestrator fills
+# in the commit at release, and Test-DependencyOverlap runs against it then.
+if ($pack.dependencies.gmTools.commit -ceq 'PENDING') { Write-Warning "EXPBG GM Tools $($pack.dependencies.gmTools.version) pin is PENDING: fill in its release commit before releasing this pack." }
 
 # Workshop listing: Unlisted, APL-SA like all three published companions, short name, space-free tags.
 if (!$asset.unlisted -or $asset.private -or $asset.license -cne 'Arma Public License Share Alike (APL-SA)') { throw 'Workshop visibility or license differs.' }
@@ -91,13 +94,37 @@ foreach ($path in $keys.Keys) {
  foreach ($key in $keys[$path]) { if (!$text.Contains($key)) { throw "Saved-data key $key missing from $path" } }
 }
 
-# Garrison Full stays refused under CDF; Simulation and the base behaviour stay reachable.
-$guard = Get-Content -LiteralPath "$repo/addon/garrison-cdf/Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonGuard.c" -Raw
-foreach ($required in @('modded class EXPG_GarrisonManager', 'override protected void TryFullSleep(EXPG_GarrisonRecord record)', 'GameProject.GetLoadedAddons(addons);', "addons.Contains(`"$cdf`")", 'record.Report("Full cache held:', 'super.TryFullSleep(record);')) {
- if (!$guard.Contains($required)) { throw "Garrison guard lost: $required" }
+# Garrison ledger bridge (GM Tools 0.1.11): the handshake, capture with exclusion and
+# backstop, the clear predicate, validation before the clear, clearBeforeLoad, recovery,
+# finalization polling and the GM dialog. The 0.1.5 Full guard is retired.
+if (Test-Path -LiteralPath "$repo/addon/garrison-cdf/Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonGuard.c") { throw 'The retired Garrison Full guard must be removed.' }
+$bridge = Get-Content -LiteralPath "$repo/addon/garrison-cdf/Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonBridge.c" -Raw
+foreach ($required in @(
+ 'override protected int CdfBridgeVersion()', 'return EXPG_GarrisonPersistence.BRIDGE_API;',
+ 'static const string KEY = "expgGarrisons";', 'static const string INNER = "cdfOriginal";',
+ 'EXPG_GarrisonPersistence.ExportJson(json, reason)', 'EXPG_CDFGarrison.StripOwned(document)',
+ 'override static bool IsManaged(SCR_EditableEntityComponent entity)', 'EXPG_GarrisonPersistence.OwnsForSave(entity.GetOwner())',
+ 'EXPG_GarrisonPersistence.ParseJson(payload, ledger, reason)', '!ledger.IsEmpty() && !clear', 'EXPG_GarrisonPersistence.BeginImport(why)',
+ 'bool mutated = result || s_RestoredEntities != previous;', 'EXPG_GarrisonPersistence.DiscardForImport(', 'EXPG_GarrisonPersistence.QueueImport(ledger, queued)',
+ 'EXPG_GarrisonPersistence.FinishImport();', 'EXPG_CDFGarrison.SkipConfirmed(key)', 'CDF_GMSave_Feedback(notnull CDF_GMSaveResult result)')) {
+ if (!$bridge.Contains($required)) { throw "Garrison bridge lost: $required" }
 }
-if ($guard -match 'TrySleep\(|EXPG_CacheMode\s*=') { throw 'The Garrison guard must not change Simulation scheduling or the GM-selected mode.' }
+# Every refusal returns before super.Restore: the scene is untouched.
+$restore = $bridge.Substring($bridge.IndexOf('override static bool Restore('))
+$super = $restore.IndexOf('bool result = super.Restore(document);')
+foreach ($refusal in @('cannot be loaded:', 'requires CDF clearBeforeLoad', 'still being placed', 'cannot be loaded now')) {
+ $at = $restore.IndexOf($refusal)
+ if ($at -lt 0 -or $at -gt $super) { throw "Garrison load refusal must come before CDF changes the scene: $refusal" }
+}
+if ($bridge -match 'TryFullSleep|EXPG_CacheMode\s*=') { throw 'The Garrison bridge must not change caching or the GM-selected mode.' }
+# Enforce gotchas in the bridge and its native fixture: reserved names, ASCII, LF.
+foreach ($path in @("$repo/addon/garrison-cdf/Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonBridge.c", "$repo/tests/EXPG_CDFGarrisonRoundTrip.c")) {
+ $text = Get-Content -LiteralPath $path -Raw
+ if ($text -match '\b(int|float|bool|string|vector|auto|IEntity)\s+(owned|Sleep|external|native)\b') { throw "Reserved Enforce name used as a variable in $path" }
+ $bytes = [IO.File]::ReadAllBytes($path)
+ if (@($bytes | Where-Object { $_ -gt 127 -or $_ -eq 13 }).Count) { throw "$path must be ASCII with LF line endings." }
+}
 
 $sourceNote = if ($sourceSkips.Count) { " Source repositories not found (skipped): $($sourceSkips -join ', ')." } else { '' }
-"PASS: $checked imported files match recorded blobs ($sourceChecks verified against pinned source commits); identity $reserved, dependencies, Unlisted APL-SA listing, retired identities absent, saved-data keys and Garrison Full guard.$sourceNote"
+"PASS: $checked imported files match recorded blobs ($sourceChecks verified against pinned source commits); identity $reserved, dependencies, Unlisted APL-SA listing, retired identities absent, saved-data keys and Garrison ledger bridge.$sourceNote"
 exit 0

@@ -1,5 +1,28 @@
 # EXPBG CDF Compat validation gates
 
+## Garrison bridge (Unreleased)
+
+Portable: `tests/Test-PackProvenance.ps1` checks the bridge (handshake, capture
+with backstop, clear predicate, validation and refusals before CDF changes the
+scene, recovery, finalization, dialog) and that the retired guard is gone.
+`tests/Test-DependencyOverlap.ps1` skips until the pinned GM Tools commit exists
+(`PENDING` until release); run it again after the pin is filled in.
+
+Native (orchestrator slot), in one diagnostic server with installed CDF 1.4.1:
+
+```powershell
+pwsh -File tests/Run-CdfRoundTrip.ps1 -GmToolsSnapshot <built EXPBG_GM_Tools> -SourceSnapshot <built EXPBG_CDF_Compat> -FixturePath tests/EXPG_CDFGarrisonRoundTrip.c -ExpectResult '\[EXPG CDF ROUNDTRIP RESULT\] checks=[1-9]\d* failures=0 garrisons=3 documentWritten=1 ownedRecords=0 ordinary=1 appendRefused=1 posts=1 patrollers=[1-9]\d* respawnedDead=0 duplicates=0 aiBeforeBind=0 fullWoke=1 corruptRefused=1 corruptSkipped=1 reason=completed' -TimeoutSeconds 600 -OrchestratorSlotGranted
+```
+
+Garrisons A (awake), B (Simulation) and C (Full, interior patrollers), one
+casualty in A and in C, an ordinary authored squad D: real CDF capture, the
+document written to and read from a file, an append load refused untouched, a
+load with `clearBeforeLoad` restoring exactly the three garrisons (no casualty
+respawned, no duplicate, D once, AI held until bound), C woken onto its posts,
+and a save with an unreadable ledger refused once and loaded without garrisons
+on confirmation. It is warm (one process): a cold restart, GM dialogs and
+multiplayer remain live gates.
+
 ## 0.1.0 status (2026-10-05)
 
 - Native compile (2026-10-05, `build/local-20261005-110226-638`): `./build.ps1
@@ -31,7 +54,7 @@
 | Unit Caching | Full-cache zones under CDF, export, cold import with clear before load; survivors at captured transforms, casualties not refilled, settings restored |
 | Intel Items | World item and AI/container inventory round trips; title/text/spent/diagnostics; no startup audio on restore |
 | Ambient Destruction | Exact scenery and building ledger replay with `clearBeforeLoad` and `repairDuplicatesOnLoad`; rejection when either is off |
-| Garrison | Full selected under CDF: with GM Tools 0.1.8 it caches in Simulation with the status "Simulation cached (CDF loaded)" and the guard never reports; with GM Tools 0.1.7 the guard reports the hold and keeps actors awake; Simulation sleep/wake; CDF save refused while a garrison is active; Prepare for Save releases garrisons, then save; clear-before-load with a Simulation-cached garrison releases it without recreating soldiers |
+| Garrison | Native in-process round trip `tests/Run-CdfRoundTrip.ps1` (see below); then a live GM save (and an autosave) with awake, Simulation and Full garrisons active, a cold server restart and load: same garrisons, posts, cache states, no duplicates, no `[EBG CDF HOLD]`; append load and an unreadable ledger refused with the dialog; a client joining after the load sees the squads |
 | Older saves | A document written with the standalone mods and companions loads with GM Tools and this pack; a GM Tools-only document with Intel or Destruction rejects before clearing |
 | Multiplayer | Dedicated server and client with the same frozen modset |
 | Publication | Immutable `v0.1.1` tag (0.1.0 retired: its Publish Project step timed out before upload), Workbench Publish Project (first publication), Unlisted APL-SA listing, five package files and hashes |

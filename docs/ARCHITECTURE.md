@@ -16,7 +16,7 @@ the assembly. The companions override no vanilla or CDF config, so `merge` and
 | `unit-caching-cdf` | `Scripts/Game/EXPBG/EBG_CDF*.c`, unused banner PNG | `EXPBG_GM_Optimizer_CDF` `8C5A6D9E73B241F0` -> `F3B7C6FB18AB1F79` |
 | `intel-items-cdf` | `Scripts/Game/EXPII/EII_CDF*.c`, banner PNG/EDDS (`E110000000000041`) | `EXPBG_Intel_Items_CDF` `E110000000000002` -> `E110000000000001` |
 | `ambient-destruction-cdf` | `Scripts/Game/EAD_CDF/EAD_CDF.c` | `EXPBG_Ambient_Destruction_CDF` `D7A82F4139C60BE5` -> `E2A47D19C8B6503F` |
-| `garrison-cdf` | `Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonGuard.c` | new |
+| `garrison-cdf` | `Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonBridge.c` | new |
 
 ## Identity
 
@@ -27,7 +27,8 @@ and CDF. EXPBG GM Tools checks for exactly this GUID:
 `addon/unit-caching/Scripts/Game/EXPBG/EBG_FullSaveGate.c` (`CanCaptureForCDF`)
 lets Unit Caching Full-cache under CDF, and
 `addon/garrison/Scripts/Game/EXPG/EXPG_GarrisonManager.c` (`TrySleep`) lets
-Garrison cache under CDF. The pack does not depend on the standalone EXPBG mods.
+Garrison cache under CDF; the garrison bridge overrides
+`EXPG_GarrisonManager.CdfBridgeVersion` to switch GM Tools to "CDF bridged". The pack does not depend on the standalone EXPBG mods.
 
 EXPBG GM Tools keeps the original module class names, prefab GUIDs and paths.
 At the GM Tools commit pinned in `tools/pack.json` every class, modded class,
@@ -38,7 +39,7 @@ compile), and no pack path, resource GUID or class name repeats one from GM
 Tools (`tests/Test-DependencyOverlap.ps1`). Resource
 identities used as literals: Unit Caching zone prefab `7E1080ED8F0633FD`,
 Ambient Destruction zone prefab `EAD1000000000010`, the seven Intel Items prefabs
-(`EII_CDFState.c`), and the CDF addon `6A1876F37D65AB09` in the Garrison guard.
+(`EII_CDFState.c`), and the garrison ledger key `expgGarrisons`.
 
 ## Saved data
 
@@ -76,57 +77,56 @@ order inside one module still needs native confirmation.
 
 ## Garrison under CDF
 
-Inputs (pinned GM Tools, CDF 1.4.1):
+Bridge: `addon/garrison-cdf/Scripts/Game/EXPG_CDF/EXPG_CDFGarrisonBridge.c`
+(0.1.6; the 0.1.5 guard is retired). It uses only the GM Tools 0.1.11 API
+`EXPG_GarrisonPersistence` and the ledger classes (`EXPG_Snapshot.c`).
 
-- CDF saves through `CDF_GMSaveCapture.Capture` (manual and autosave). The Unit
-  Caching bridge first calls `EBG_CacheSnapshot.CanSave`; GM Tools Garrison
-  (`EXPG_SaveSafety.c`) refuses there while `EXPG_GarrisonManager.HasActive()`.
-  With this pack, no CDF document is written while any garrison is active.
-- CDF loads through `CDF_GMSaveRestore.Restore`. With `clearBeforeLoad` it
-  deletes the topmost managed (serializable, authored or author-related,
-  deletable) editable entity of each hierarchy. No bridge checks garrisons.
-- Garrison Full (`EXPG_FullCache`) is an `EBG_PrefabFullCache` without a
-  portable group snapshot: survivors are deleted, the native group is retained
-  empty, and the transaction is not in `EBG_CacheManager.Records`, so the Unit
-  Caching bridge never exports it.
+Handshake: `EXPG_GarrisonManager.CdfBridgeVersion()` (a protected instance method,
+so the override dispatches) returns `EXPG_GarrisonPersistence.BRIDGE_API`. GM
+Tools then runs "CDF bridged": garrison-owned squads, waypoints and living guards
+are `NON_SERIALIZABLE` (CDF's `Serialize()` filter skips them and their subtree)
+and out of native tracking, and Full caching is allowed. Without the bridge (or
+with 0.1.5) GM Tools runs "CDF legacy", the 0.1.8 rules.
 
-Full-cached garrison during a clear-before-load: when CDF deletes the retained
-empty group (a squad placed through the GM picker carries the GM author), the
-next garrison tick wakes the record;
-`BeginWake` finds neither snapshot nor group and refuses with "Original group no
-longer exists". The record retries every 5 s forever, `HasActive()` stays true,
-and every later CDF save, native save (`EBG_MissionPersistenceSerializer`) and
-Prepare for Save stays blocked until a new world. When CDF keeps that group
-(for example an unauthored scenario group, or if CDF does not serialize an empty
-group), wake respawns the survivors into the newly loaded scene, possibly next
-to an older saved copy of the same squad. Both outcomes are reasoned from source;
-neither has been reproduced natively.
+Save (`CDF_GMSaveCapture.Capture`): `EXPG_GarrisonPersistence.ExportJson` first
+(it synchronises the exclusion; a refusal returns no document and opens the
+dialog), then CDF's capture, then a backstop that removes any record whose entity
+the garrison still owns and remaps `m_iParent`/`m_iTarget`, then the envelope
+`{"expgGarrisons": ledger, "cdfOriginal": world state}` (the Ambient Destruction
+pattern). No garrison, no envelope. Nothing is spawned, woken or materialized.
 
-Simulation-cached garrison: the original actors stay in their group with pinned
-AI LOD. Clear deletes the group with its members like any squad. The garrison
-tick sees the group missing, discards snapshots whose actors are gone,
-`EBG_SimulationCache.Restore` completes with nothing left, and the record
-releases. Nobody is recreated. With an append load or an unmanaged group nothing
-is deleted and the garrison continues.
+Clear (`CDF_GMSaveCapture.IsManaged`): true for garrison-owned entities, so CDF's
+Clear deletes the garrisons of the current scene with the rest of it.
 
-Decision: `EXPG_CDFGarrisonGuard.c` mods `EXPG_GarrisonManager.TryFullSleep`.
-While CDF (`6A1876F37D65AB09`) is loaded it reports "Full cache held: CDF saves
-cannot keep Garrison Full survivors and this EXPBG GM Tools has no Simulation
-fallback. Update GM Tools, or choose Simulation or Off." and returns before any
-deletion; otherwise it calls the original. It does not change the GM-selected
-mode, Simulation, wake/sleep or release. Because the pack depends on CDF,
-Garrison Full is effectively off whenever the pack is loaded. Real Garrison
-persistence would need a portable garrison ledger (building identity, posts,
-patrol state, survivor snapshots) in the CDF document and is not attempted.
+Load (`CDF_GMSaveRestore.Restore`), every refusal before `super.Restore`:
+1. Peel the envelope (top level, or under the Ambient Destruction layer, rebuilt)
+   and read the ledger: schema, world, limits, soldier and squad prefabs,
+   factions, orders. Unreadable: refused; the same document again within two
+   minutes loads without garrisons (recovery, with a notice).
+2. A ledger with garrisons requires `clearBeforeLoad`.
+3. Refused while an earlier garrison load is still being placed.
+4. `BeginImport` (Add Garrison waits), inner world state in place, `super`.
+5. Mutation (CDF returned true, or `s_RestoredEntities` was replaced): with
+   `clearBeforeLoad` the old garrisons are discarded without waking or
+   respawning anyone; the ledger is queued (a save during the load writes it back
+   verbatim). No mutation: `EndImport`, nothing changed.
+6. A callback polls CDF's protected statics every 100 ms (at most 10 s) until
+   finalization is done (`s_RestoredEntities` null, pending states, guarded
+   groups and pending members empty), then `FinishImport` creates the
+   garrisons: buildings, compositions, deep state and the Ambient Destruction
+   replay are final by then.
 
-Since GM Tools 0.1.8, `EXPG_GarrisonManager.CacheModeInUse` itself runs a
-garrison set to Full in Simulation while CDF is loaded (status "Simulation
-cached (CDF loaded)"), so `TryFullSleep` is not reached under CDF and the guard
-is a backstop that reports only next to an older GM Tools. Each state through a
-CDF save and load: awake and Simulation-cached garrisons block the save (Prepare
-for Save restores and releases them first); a clear-before-load deletes the
-Simulation originals with their group and the garrison releases without
-recreating anyone; an append load leaves the garrison running.
+No duplicates under `clearBeforeLoad`: CDF never holds a garrison entity, Clear
+removes the scene's garrisons, the bridge discards their records, and ledger
+tokens are unique (an import refuses a token that already exists). A partial
+CDF load after the clear still imports the garrisons (they are self-contained).
+Squads protected from deletion by the editor are not garrison-portable: GM Tools
+leaves them to CDF as ordinary squads.
+
+Not covered by the bridge: a save made with the bridge loaded without it (CDF
+then cannot read its world attributes and the garrisons are lost, as with the
+Ambient Destruction envelope); scenario-placed squads garrisoned in a scenario
+that recreates them on a cold start (CDF does not own scenario entities either).
 
 ## Native builds and dependencies
 

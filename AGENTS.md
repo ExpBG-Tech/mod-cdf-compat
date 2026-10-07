@@ -5,7 +5,7 @@ Module folders under `addon/` hold the merged companions byte-for-byte; keep cla
 names, resource GUIDs, prefab paths and saved-data keys so older CDF saves stay readable.
 Record any intentional change to an imported file in `tools/pack.json` and the changelog.
 Depend only on APIs present in the pinned EXPBG GM Tools commit; never edit mod-gm-tools here.
-Garrison Full caching stays refused while CDF is loaded unless real persistence is designed.
+Garrisons are saved through the GM Tools garrison ledger (garrison-cdf bridge); never let CDF capture a garrison-owned entity.
 Source is authoritative; installed addons and frozen builds are never edited.
 Native build, testing and publication require the orchestrator's explicit native-slot
 release. Never stop unrelated engine processes. Keep credentials, profiles and evidence ignored.

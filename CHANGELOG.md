@@ -1,5 +1,25 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.6
+
+- Built against EXPBG GM Tools 0.1.11 (pinned in `tools/pack.json`).
+- Garrison (new bridge, replaces the guard): garrisons are saved in CDF files
+  and loaded back. The CDF document carries the EXPBG GM Tools garrison ledger
+  (`expgGarrisons` around CDF's world state): every garrison's building, posts
+  and patrol stops, cache state, settings, casualties and overrides. CDF never
+  captures a garrison squad or soldier itself, and Full caching works under CDF
+  again. A load with `clearBeforeLoad` clears the scene's garrisons and restores
+  the saved ones once CDF has finished (no duplicates); their soldiers' AI stays
+  held until they are bound to their posts, and Full garrisons stay cached with
+  nobody in the world. Refused before anything changes, with the reason in a
+  dialog: an append load (`clearBeforeLoad` off) of a save with garrisons, and a
+  save whose garrison ledger cannot be read (wrong world, missing prefab or
+  faction, damaged data); loading the same save again within two minutes loads
+  it without its garrisons. CDF saves and autosaves no longer need Unit Caching
+  Prepare for Save while garrisons are active.
+- Tests: `tests/Run-CdfRoundTrip.ps1` and `tests/EXPG_CDFGarrisonRoundTrip.c`,
+  a native in-process CDF round trip (capture, file, refusals, restore).
+
 ## 0.1.5
 
 - Built against EXPBG GM Tools 0.1.8.
