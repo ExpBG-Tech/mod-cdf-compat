@@ -5,8 +5,8 @@ modpack, by M.Pac and K.Edgar. One addon and engine project
 (`07BC942D90324CD9`, Unlisted):
 <https://reforger.armaplatform.com/workshop/07BC942D90324CD9>.
 
-Version 0.1.6 targets CDF Game Master Save 1.4.1 and EXPBG
-GM Tools 0.1.11; 0.1.5 targets GM Tools 0.1.8. It is an Unlisted testing release. In the first client test (dedicated server, full
+Version 0.1.7 targets CDF Game Master Save 1.4.1 and EXPBG
+GM Tools 0.1.14 (0.1.6: GM Tools 0.1.11; 0.1.5: GM Tools 0.1.8). It is an Unlisted testing release. In the first client test (dedicated server, full
 production modset) a CDF save and a load in the same session succeeded; a load
 after a server restart was refused by Ambient Destruction, which GM Tools 0.1.4
 fixes (re-test pending). See [testing](docs/TESTING.md).

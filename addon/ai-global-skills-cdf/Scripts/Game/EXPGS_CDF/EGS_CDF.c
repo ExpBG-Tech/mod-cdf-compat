@@ -39,6 +39,9 @@ class EGS_CDFLoad
  }
 }
 
+// Modded config classes repeat the original decorator; without it Edit.conf reports
+// "Unknown class" and drops the attribute (combat mode, saved module values).
+[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 modded class EGS_SavedGlobalAttribute
 {
  override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
@@ -48,6 +51,7 @@ modded class EGS_SavedGlobalAttribute
  }
 }
 
+[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 modded class EGS_SavedFactionAttribute
 {
  override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
@@ -84,6 +88,7 @@ modded class SCR_AIGroup
  }
 }
 
+[BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 modded class SCR_AIGroupCombatModeAttribute
 {
  // Session saves read without an editor manager. Keep the group's own combat mode; the

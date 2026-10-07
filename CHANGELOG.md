@@ -1,5 +1,18 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.7
+
+- Built against EXPBG GM Tools 0.1.14 (pinned in `tools/pack.json`).
+- AI Global Skills CDF: with this pack loaded, the vanilla "Set combat mode"
+  attribute was missing from a group's Edit properties, and CDF did not save or
+  restore the AI Global Skills module's global values. The modded attribute
+  classes lacked `[BaseContainerProps()]`, so `Edit.conf` logged "Unknown class
+  'SCR_AIGroupCombatModeAttribute'" and "'EGS_SavedGlobalAttribute'" and dropped
+  them. Restored.
+- Workshop description without the version number.
+- Portable guard `tests/Test-AttributeDecorators.ps1`: every modded editor
+  attribute keeps its container decorator.
+
 ## 0.1.6
 
 - Built against EXPBG GM Tools 0.1.11 (pinned in `tools/pack.json`).
