@@ -50,6 +50,23 @@ $cdfFolders = @(Get-ChildItem -LiteralPath $config.InstalledAddonsRoot -Director
  $projects.Count -eq 1 -and (Get-Content -LiteralPath $projects[0].FullName -Raw) -cmatch ('\bGUID\s+"?' + $cdfId + '\b')
 })
 if ($cdfFolders.Count -ne 1) { throw "Install CDF Game Master Save ($cdfId) in InstalledAddonsRoot first." }
+# The GM Tools snapshot's own dependencies (0.1.16+: EXPBG Audio Data 198987BE7BAC4C84) must load with it:
+# found by project GUID in DependencyAddonsRoots (root order) and linked like CDF, never copied.
+$gmProject = @(Get-ChildItem -LiteralPath $gmSource -Filter '*.gproj' -File)[0]
+$gmNeeds = @([regex]::Matches([regex]::Match((Get-Content -LiteralPath $gmProject.FullName -Raw), '(?s)Dependencies\s*\{([^}]*)\}').Groups[1].Value, '[A-Fa-f0-9]{16}') | ForEach-Object { $_.Value.ToUpperInvariant() } | Where-Object { $_ -cne '58D0FB3206B6F859' -and $_ -cne $cdfId -and $_ -cne $selfId -and $_ -cne $gmId })
+$dependencyLinks = [ordered]@{}
+foreach ($id in $gmNeeds) {
+ $found = $null
+ foreach ($root in @($config.DependencyAddonsRoots -split ';' | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Container) })) {
+  $found = @(Get-ChildItem -LiteralPath $root -Directory | Sort-Object Name | Where-Object {
+   $projects = @(Get-ChildItem -LiteralPath $_.FullName -Filter '*.gproj' -File)
+   $projects.Count -eq 1 -and (Get-Content -LiteralPath $projects[0].FullName -Raw) -cmatch ('\bGUID\s+"?' + $id + '\b')
+  } | Select-Object -First 1 | ForEach-Object FullName)[0]
+  if ($found) { break }
+ }
+ if (!$found) { throw "EXPBG GM Tools needs addon $id (0.1.16+: EXPBG Audio Data); install it in one of DependencyAddonsRoots: $($config.DependencyAddonsRoots)" }
+ $dependencyLinks[$id] = $found
+}
 $engine = Join-Path $config.ServerRoot 'ArmaReforgerServerDiag.exe'
 if (!(Test-Path -LiteralPath $engine -PathType Leaf)) { throw 'Configure ServerRoot with the native diagnostic server installation.' }
 $run = Join-Path $repo ('build/cdf-roundtrip-' + [DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss-fff'))
@@ -100,17 +117,23 @@ foreach ($argument in $arguments) { $start.ArgumentList.Add($argument) }
 $process = [Diagnostics.Process]::new()
 $process.StartInfo = $start
 Assert-NativeSlot
-# Junction only: removing it never touches the installed CDF files.
-New-Item -ItemType Junction -Path $link -Target $cdfFolders[0].FullName | Out-Null
+# Junctions only: removing them never touches the installed CDF (or GM Tools dependency) files.
 function Remove-CdfLink {
- $item = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
- if ($item -and $item.LinkType -eq 'Junction') { $item.Delete() }
+ foreach ($path in @($link) + @($dependencyLinks.Keys | ForEach-Object { Join-Path $addons $_ })) {
+  $item = Get-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+  if ($item -and $item.LinkType -eq 'Junction') { $item.Delete() }
+ }
 }
+function Test-CdfLinkPresent { [bool]@(@($link) + @($dependencyLinks.Keys | ForEach-Object { Join-Path $addons $_ }) | Where-Object { Get-Item -LiteralPath $_ -Force -ErrorAction SilentlyContinue }).Count }
 $started = $false
-try { $started = $process.Start() } finally { if (!$started) { Remove-CdfLink } }
+try {
+ New-Item -ItemType Junction -Path $link -Target $cdfFolders[0].FullName | Out-Null
+ foreach ($id in $dependencyLinks.Keys) { New-Item -ItemType Junction -Path (Join-Path $addons $id) -Target $dependencyLinks[$id] | Out-Null }
+ $started = $process.Start()
+} finally { if (!$started) { Remove-CdfLink } }
 if (!$started) { throw 'Diagnostic server failed to start.' }
 $startTime = $process.StartTime.ToUniversalTime()
-$receipt = [ordered]@{gmTools=$gmSource;source=$source;cdf=$cdfFolders[0].FullName;run=$run;pid=$process.Id;startedUtc=$startTime.ToString('o');executable=$engine;arguments=$arguments;timeoutSeconds=$TimeoutSeconds;timedOut=$false;ownedProcessStopped=$false;nativeExitCode=$null;passed=$false}
+$receipt = [ordered]@{gmTools=$gmSource;source=$source;cdf=$cdfFolders[0].FullName;gmToolsDependencies=$dependencyLinks;run=$run;pid=$process.Id;startedUtc=$startTime.ToString('o');executable=$engine;arguments=$arguments;timeoutSeconds=$TimeoutSeconds;timedOut=$false;ownedProcessStopped=$false;nativeExitCode=$null;passed=$false}
 $receipt | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$run/run.json"
 $stdout = $process.StandardOutput.ReadToEndAsync()
 $stderr = $process.StandardError.ReadToEndAsync()
@@ -133,9 +156,9 @@ try {
 } finally {
  if ($process.HasExited) { Remove-CdfLink }
  $receipt | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$run/result.json"
- # The addon copies (about 1 GB per run) are only inputs; once the engine is gone and the CDF
+ # The addon copies (about 1 GB per run) are only inputs; once the engine is gone and every
  # junction is removed, only the logs, saves and receipts are kept.
- if ($process.HasExited -and !(Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue) -and (Test-Path -LiteralPath $addons)) { Remove-Item -LiteralPath $addons -Recurse -Force -ErrorAction SilentlyContinue }
+ if ($process.HasExited -and !(Test-CdfLinkPresent) -and (Test-Path -LiteralPath $addons)) { Remove-Item -LiteralPath $addons -Recurse -Force -ErrorAction SilentlyContinue }
 }
 if (!$receipt.passed) { throw "CDF round-trip fixture not passed; inspect $run" }
 "PASS: in-process CDF capture, file round trip, refusals and clearBeforeLoad restore of garrisons in one diagnostic server. No GM UI, cold restart or multiplayer. Evidence: $run"

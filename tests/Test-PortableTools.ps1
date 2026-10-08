@@ -116,6 +116,16 @@ New-Item -ItemType Directory -Path $workshopPack | Out-Null
 & "$fixture/tools/Copy-AddonDependencies.ps1" -Destination "$root/dependencies-workshop" -SearchRoots $searchRoots
 $frozen = @(Get-Content "$root/dependencies-workshop.json" -Raw | ConvertFrom-Json)
 if (($frozen | Where-Object id -eq 'D123456789ABCDEF').source -ne $workshopPack -or !($frozen | Where-Object id -eq 'D123456789ABCDEF').packed) { throw 'Workshop dependency did not take precedence.' }
+# A dependency's own dependency (GM Tools 0.1.16+ needs EXPBG Audio Data) is frozen too, found by project GUID in the roots.
+'GameProject { GUID "D123456789ABCDEF" Dependencies { "58D0FB3206B6F859" "E123456789ABCDEF" } }' | Set-Content "$workshopPack/addon.gproj"
+Rejects { & "$fixture/tools/Copy-AddonDependencies.ps1" -Destination "$root/missing-transitive" -SearchRoots $searchRoots }
+$audioData = Join-Path $root 'workbench addons/Any_Folder_Name'
+New-Item -ItemType Directory -Path $audioData | Out-Null
+'GameProject { GUID "E123456789ABCDEF" }' | Set-Content "$audioData/Audio_Data.gproj"
+& "$fixture/tools/Copy-AddonDependencies.ps1" -Destination "$root/dependencies-transitive" -SearchRoots $searchRoots
+$frozen = @(Get-Content "$root/dependencies-transitive.json" -Raw | ConvertFrom-Json)
+if (!(Test-Path "$root/dependencies-transitive/E123456789ABCDEF/Audio_Data.gproj") -or ($frozen | Where-Object id -eq 'E123456789ABCDEF').origin -cne 'dependency of D123456789ABCDEF') { throw 'The dependency of a dependency was not frozen.' }
+'GameProject { GUID "D123456789ABCDEF" }' | Set-Content "$workshopPack/addon.gproj"
 'GameProject { GUID "D000000000000000" }' | Set-Content "$workshopPack/addon.gproj"
 Rejects { & "$fixture/tools/Copy-AddonDependencies.ps1" -Destination "$root/wrong-pack" -SearchRoots $searchRoots }
 'GameProject { GUID "D123456789ABCDEF" }' | Set-Content "$workshopPack/addon.gproj"
@@ -163,5 +173,5 @@ if ($LASTEXITCODE -eq 0 -or (Test-Path "$runner/unexpected.txt")) { throw 'Porta
 "Add-Content -LiteralPath '$runner/order.txt' -Value second" | Set-Content "$runner/tests/Test-ZLater.ps1"
 & $pwsh -NoProfile -File "$runner/tests/Test-Tools.ps1" *> "$root/runner-order.log"
 if ($LASTEXITCODE -ne 0 -or ((Get-Content "$runner/order.txt") -join ',') -cne 'first,second') { throw 'Portable test discovery was incomplete or not deterministic.' }
-'PASS: alternate source/name/GUID, private visibility, source archive, installation, ordered multi-root dependency identity and receipt, payload/metadata/link guards, config rejection and test-runner failfast.'
+'PASS: alternate source/name/GUID, private visibility, source archive, installation, ordered multi-root dependency identity and receipt, dependencies of dependencies by GUID, payload/metadata/link guards, config rejection and test-runner failfast.'
 exit 0

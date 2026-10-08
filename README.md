@@ -155,8 +155,13 @@ folder. Each is looked up by directory name in `DependencyAddonsRoots` from
 downloads (`InstalledAddonsRoot`, folders `CDFGameMasterSave_6A1876F37D65AB09`
 and `EXPBGGMTools_FC1402F65B2F4A45`) and then the Workbench addons directory,
 where `mod-gm-tools/build.ps1` installs its local build as `EXPBG_GM_Tools`.
-A folder with the right name but a different project GUID stops the build. The
-chosen sources and hashes are recorded in the build receipt. See
+A folder with the right name but a different project GUID stops the build.
+Their own dependencies are frozen too, found by project GUID in the same roots:
+EXPBG GM Tools 0.1.16 and later depend on EXPBG Audio Data (`198987BE7BAC4C84`,
+its sounds), so that item (a Workshop download, or the `EXPBG_Ambient_Radio_Audio`
+build of its mod-audio-data folder) must be installed in one of the roots; the CDF
+round-trip fixture links it like CDF. The chosen sources and hashes are recorded
+in the build receipt. See
 [`tools/local-config.example.json`](tools/local-config.example.json).
 
 See [architecture](docs/ARCHITECTURE.md), [testing](docs/TESTING.md),

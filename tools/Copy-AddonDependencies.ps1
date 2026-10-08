@@ -2,7 +2,9 @@
 # Freeze every declared external dependency into a GUID-named snapshot for one native run.
 # Roots are searched in order (-SearchRoots, or -InstalledAddonsRoot alone), and within a root
 # the configured directory names in order. The first existing candidate wins; a candidate whose
-# project GUID differs stops the build. The chosen sources are recorded in <Destination>.json.
+# project GUID differs stops the build. The dependencies of those dependencies (their project files)
+# are frozen too, found by project GUID in the same roots. The chosen sources are recorded in
+# <Destination>.json.
 param([Parameter(Mandatory)][string]$Destination, [string]$InstalledAddonsRoot, [string[]]$SearchRoots = @(), [switch]$Companion)
 $ErrorActionPreference = 'Stop'
 $settings = & "$PSScriptRoot/Get-ProjectConfig.ps1"
@@ -39,6 +41,32 @@ if ($entry.installedDependencies) {
   if (!$found) { throw "Install the configured dependency with GUID $id before building (looked for $(@($entry.installedDependencies[$id]) -join ', ') in: $($roots -join '; '))." }
   $sources[$id] = $found
   $origins[$id] = 'search-root'
+ }
+ # A dependency's own dependencies must be in the same -addonsDir snapshot, or the engine cannot load it
+ # (EXPBG GM Tools 0.1.16+ depends on EXPBG Audio Data 198987BE7BAC4C84). They are found by project GUID
+ # in the same roots, in root order, and recorded with origin "dependency of <GUID>".
+ if (!$Companion) {
+  $baseGame = '58D0FB3206B6F859'
+  $pending = [Collections.Generic.Queue[string]]::new()
+  foreach ($id in @($sources.Keys)) { $pending.Enqueue($id) }
+  while ($pending.Count) {
+   $owner = $pending.Dequeue()
+   $ownerProject = @(Get-ChildItem -LiteralPath $sources[$owner] -Filter '*.gproj' -File)[0]
+   $needs = @([regex]::Matches([regex]::Match((Get-Content -LiteralPath $ownerProject.FullName -Raw), '(?s)Dependencies\s*\{([^}]*)\}').Groups[1].Value, '[A-Fa-f0-9]{16}') | ForEach-Object { $_.Value.ToUpperInvariant() })
+   foreach ($id in $needs) {
+    if ($id -ceq $baseGame -or $id -ceq $entry.id -or $sources.Contains($id)) { continue }
+    $found = $null
+    foreach ($root in $roots) {
+     if (!(Test-Path -LiteralPath $root -PathType Container)) { continue }
+     $found = @(Get-ChildItem -LiteralPath $root -Directory | Sort-Object Name | Where-Object { Test-AddonIdentity $_.FullName $id } | Select-Object -First 1 | ForEach-Object FullName)[0]
+     if ($found) { break }
+    }
+    if (!$found) { throw "Dependency $owner ($($sources[$owner])) needs addon $id, which is in none of: $($roots -join '; '). Install it first (EXPBG GM Tools 0.1.16+ needs EXPBG Audio Data 198987BE7BAC4C84: subscribe to it, or build its mod-audio-data folder with ./build.ps1 -NonInteractive -Audio in mod-ambient-radio)." }
+    $sources[$id] = $found
+    $origins[$id] = "dependency of $owner"
+    $pending.Enqueue($id)
+   }
+  }
  }
 }
 if (Test-Path -LiteralPath $Destination) { throw 'Dependency snapshot already exists; use a new run name.' }

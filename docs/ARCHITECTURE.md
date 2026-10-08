@@ -135,7 +135,9 @@ CDF (`CDFGameMasterSave_6A1876F37D65AB09`) and EXPBG GM Tools
 (`EXPBGGMTools_FC1402F65B2F4A45`, then the local build folder `EXPBG_GM_Tools`).
 `tools/Copy-AddonDependencies.ps1` searches `DependencyAddonsRoots` in order
 (default: Workshop downloads, then the Workbench addons directory), verifies
-each project GUID, copies it to a GUID-named folder and writes
+each project GUID, adds the dependencies of those dependencies by project GUID
+(EXPBG GM Tools 0.1.16+ needs EXPBG Audio Data `198987BE7BAC4C84`), copies each
+to a GUID-named folder and writes
 `dependencies.json` (source, Workshop version if any, packed or loose, hashes).
 Build and release receipts embed that record.
 
