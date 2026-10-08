@@ -28,12 +28,12 @@ if ($pack.dependencies.gmTools.id -cne $gmTools -or $pack.dependencies.cdf.id -c
 # in the commit at release, and Test-DependencyOverlap runs against it then.
 if ($pack.dependencies.gmTools.commit -ceq 'PENDING') { Write-Warning "EXPBG GM Tools $($pack.dependencies.gmTools.version) pin is PENDING: fill in its release commit before releasing this pack." }
 
-# Workshop listing: Unlisted, APL-SA like all three published companions, short name, space-free tags.
-if (!$asset.unlisted -or $asset.private -or $asset.license -cne 'Arma Public License Share Alike (APL-SA)') { throw 'Workshop visibility or license differs.' }
+# Workshop listing: Unlisted, the simplified Arma Public License (APL) like the other EXPBG script mods, short name, space-free tags.
+if (!$asset.unlisted -or $asset.private -or $asset.license -cne 'Arma Public License (APL)') { throw 'Workshop visibility or license differs.' }
 if ($asset.name -cne 'EXPBG CDF Compat' -or $asset.name.Length -gt 30) { throw 'Workshop name differs or exceeds 30 characters.' }
 if (!@($asset.tags).Count -or @($asset.tags | Where-Object { $_ -cnotmatch '^[A-Z0-9]+$' }).Count) { throw 'Workshop tags must be space-free upper-case words.' }
 # No version in the description (0.1.7): CLI updates keep the old listing text, so it would go stale.
-if ($asset.description -match '\{\{VERSION\}\}|\bVersion \d' -or $asset.description -notmatch '07BC942D90324CD9|github.com/ExpBG-Tech/mod-cdf-compat') { throw 'Workshop description must name its source and carry no version.' }
+if ($asset.description -match '\{\{VERSION\}\}|\bVersion \d' -or $asset.description -match 'Authors?:|K\.Edgar|M\.Pac') { throw 'Workshop description must carry no version and name nobody.' }
 foreach ($id in @($gmTools,$cdf)) { if (!$asset.description.Contains($id)) { throw "Workshop description must name dependency $id." } }
 
 # Module provenance: exact file inventory and Git blob identity (raw bytes, no filters).

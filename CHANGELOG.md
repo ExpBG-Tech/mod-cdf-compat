@@ -1,5 +1,10 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.9
+
+- Built against EXPBG GM Tools 0.1.16 (pinned in `tools/pack.json`), which now depends on EXPBG Audio Data.
+- Workshop listing: a short feature list, licence Arma Public License (APL).
+
 ## 0.1.8
 
 - Built against EXPBG GM Tools 0.1.15 (pinned in `tools/pack.json`).

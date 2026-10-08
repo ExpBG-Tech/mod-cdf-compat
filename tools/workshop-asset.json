@@ -7,14 +7,15 @@
   "minGameVersion": 1,
   "private": false,
   "unlisted": true,
-  "description": "# EXPBG CDF Compat\nAuthors: M.Pac and K.Edgar\n\nCDF Game Master Save support for the EXPBG GM Tools modpack in one addon. Load it, EXPBG GM Tools and CDF Game Master Save on the server and all clients. It replaces the standalone EXPBG GM Optimizer CDF, Intel Items - CDF and Ambient Destruction CDF companions: never enable it together with them or with the standalone EXPBG mods.\n\n- Unit Caching: saves stable Full Cache survivor snapshots and cache-module settings inside CDF files. Casualties never refill; survivors return with prefab-default equipment. Load with clear before load and keep usePersistenceBlob=false.\n- Intel Items: saves each item's title, text, startup state and diagnostics setting for world intel and the inventories CDF captures, such as AI and containers. Active player inventories stay excluded by CDF.\n- Ambient Destruction: saves module settings, exact scenery transforms and the map-building destruction ledger. Requires CDF clearBeforeLoad and repairDuplicatesOnLoad.\n- Intel server racks and USB drives: title, text, download time and drive contents.\n- Unit Dialog: each AI's speaker name, dialog lines and talking gesture. Units inside a Full-cached squad do not keep dialog through CDF.\n- AI Global Skills: a load restores exactly the saved settings and each group's original combat mode.\n- AI Surrender: prisoners removed by a CDF load are released cleanly.\n- Garrison (needs EXPBG GM Tools 0.1.11 or later): garrisons are saved in CDF files and loaded back with their buildings, posts, patrols, cache state, settings and casualties; Full caching works under CDF. Keep clearBeforeLoad on: a save with garrisons refuses an append load, and a save whose garrison ledger cannot be read loads without garrisons only when you load it a second time.\n\nTargets CDF 1.4.1. Invalid or unsupported snapshots are rejected before CDF clears the scene, and failed imports keep their recovery information. No universal mod compatibility is claimed.\n\nDependencies: EXPBG GM Tools FC1402F65B2F4A45 and CDF Game Master Save 6A1876F37D65AB09; both keep their own authors and notices.\n\nLicense: Arma Public License Share Alike (APL-SA). Source: github.com/ExpBG-Tech/mod-cdf-compat",
-  "summary": "CDF Game Master Save support for EXPBG GM Tools: Unit Caching snapshots, Intel Items and racks, Unit Dialog, AI Global Skills, AI Surrender and Ambient Destruction in CDF saves.",
-  "license": "Arma Public License Share Alike (APL-SA)",
+  "description": "# EXPBG CDF Compat\n\n- Garrisons, Full-cached squads and cache zones are saved in CDF Game Master Save files and restored on load.\n- Intel items, server racks and USB drives keep their contents.\n- Unit Dialog lines, AI Global Skills settings and combat modes are kept.\n- Surrender prisoners are released cleanly on load.\n- Ambient Destruction scenery and building damage are kept.\n- Requires: EXPBG GM Tools (FC1402F65B2F4A45) and CDF Game Master Save (6A1876F37D65AB09).",
+  "summary": "CDF Game Master Save support for EXPBG GM Tools: garrisons, unit caching, intel items, dialog, AI skills, surrender and destruction in CDF saves.",
+  "license": "Arma Public License (APL)",
   "tags": [
     "EXPBG",
     "GAMEMASTER",
     "SYSTEMS",
     "PERSISTENCE",
     "CDF"
-  ]
+  ],
+  "licenseText": ""
 }
