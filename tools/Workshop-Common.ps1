@@ -35,6 +35,17 @@ function Assert-NoWorkshopUploadAttempt([string]$Repo, [string]$Version, [string
     }
 }
 
+# The publishing form logs "Publishing project to Workshop..." once its upload is confirmed. A run whose
+# publish console log exists without that line or any upload progress closed the form before uploading,
+# so its version stays free; missing logs count as an upload.
+function Test-WorkshopUploadStarted([string]$RunDirectory) {
+    $logs = @(Get-ChildItem -LiteralPath (Join-Path $RunDirectory 'publish-engine-logs') -Filter '*.log' -Recurse -File -ErrorAction SilentlyContinue)
+    if (!($logs | Where-Object Name -eq 'console.log')) { return $true }
+    $logs += @(Get-Item -LiteralPath (Join-Path $RunDirectory 'publish-output.log') -ErrorAction SilentlyContinue)
+    $text = @($logs | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
+    return $text -match 'Publishing project to Workshop|Uploading status|UploadAssetFile|Publishing successful'
+}
+
 function Assert-NoLegacyPublishHold([string]$Repo) {
     $path = Join-Path $Repo '.local/legacy-publish-review.json'
     if (Test-Path -LiteralPath $path) {

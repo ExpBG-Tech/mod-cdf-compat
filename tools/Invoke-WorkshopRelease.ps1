@@ -103,7 +103,12 @@ if ($Publish) {
     }
     $receipt.uploadAttempted=$true; SaveReceipt
     if ($Interactive) {
-        RunWorkbench 'publish' @('-wbBackendLogin',$Credential.UserName,$Credential.GetNetworkCredential().Password)
+        try { RunWorkbench 'publish' @('-wbBackendLogin',$Credential.UserName,$Credential.GetNetworkCredential().Password) }
+        catch {
+            # Closing the form before its upload confirmation uploads nothing: record that, so this version can be retried.
+            if (!(Test-WorkshopUploadStarted $private)) { $receipt.uploadAttempted=$false; $receipt.cancelledBeforeUpload=$true; SaveReceipt }
+            throw
+        }
     } else {
         RunWorkbench 'publish' @('-publishAddon','-publishAddonDir',$packed,'-publishAddonVersion',$version,'-publishAddonPreviewImage',(Join-Path $source $settings.addon.preview),'-publishAddonChangeNoteFile',"$private/change-note.txt",'-wbBackendLogin',$Credential.UserName,$Credential.GetNetworkCredential().Password)
     }

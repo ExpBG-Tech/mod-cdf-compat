@@ -127,5 +127,5 @@ foreach ($path in @("$repo/addon/garrison-cdf/Scripts/Game/EXPG_CDF/EXPG_CDFGarr
 }
 
 $sourceNote = if ($sourceSkips.Count) { " Source repositories not found (skipped): $($sourceSkips -join ', ')." } else { '' }
-"PASS: $checked imported files match recorded blobs ($sourceChecks verified against pinned source commits); identity $reserved, dependencies, Unlisted APL-SA listing, retired identities absent, saved-data keys and Garrison ledger bridge.$sourceNote"
+"PASS: $checked imported files match recorded blobs ($sourceChecks verified against pinned source commits); identity $reserved, dependencies, Unlisted APL listing, retired identities absent, saved-data keys and Garrison ledger bridge.$sourceNote"
 exit 0

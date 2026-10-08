@@ -48,6 +48,13 @@ Assert-NoWorkshopUploadAttempt $root '0.1.19'
 @{version='0.1.19';uploadAttempted=$true;uploaded=$false} | ConvertTo-Json | Set-Content "$root/artifacts/previous/workshop-receipt.json"
 Rejects { Assert-NoWorkshopUploadAttempt $root '0.1.19' } 'already attempted'
 Assert-NoWorkshopUploadAttempt $root '0.1.20'
+$cancelled = Join-Path $root '.local/cancelled-run'
+New-Item -ItemType Directory -Force -Path "$cancelled/publish-engine-logs" | Out-Null
+Set-Content -LiteralPath "$cancelled/publish-engine-logs/console.log" -Value 'DEFAULT      : Validating bundle successful'
+if (Test-WorkshopUploadStarted $cancelled) { throw 'A form closed before its upload confirmation must leave its version free.' }
+Add-Content -LiteralPath "$cancelled/publish-engine-logs/console.log" -Value 'DEFAULT      : Publishing project to Workshop...'
+if (!(Test-WorkshopUploadStarted $cancelled)) { throw 'A confirmed upload must count as an upload attempt.' }
+if (!(Test-WorkshopUploadStarted (Join-Path $root '.local/no-such-run'))) { throw 'A run without publish logs must count as an upload attempt.' }
 Assert-NoLegacyPublishHold $root
 New-Item -ItemType Directory -Path "$root/.local" -Force | Out-Null
 '{"runs":[{"id":123,"status":"in_progress"}]}' | Set-Content "$root/.local/legacy-publish-review.json"
