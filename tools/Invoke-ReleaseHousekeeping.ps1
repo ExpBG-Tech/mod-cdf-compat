@@ -36,6 +36,12 @@ SHA-256) against an unchanged source, then take the source out of use with a sam
 in the archive and the source stays. Links (junctions, symlinks, mount points) are never followed or
 moved. Without ArchiveRoot nothing is moved. Nothing is ever deleted, except by -Purge.
 
+-Delete permanently deletes the heavy payloads instead of archiving them (no ArchiveRoot needed);
+evidence stays in place exactly as in the archive mode, links are never followed and a payload that
+cannot be removed (in use) is reported and left. With -Delete a published release run (verified
+upload receipt) is slimmed whatever its age: its upload is done, its receipt and manifests stay.
+tools/Invoke-Cleanup.ps1 runs this mode after every release and after every push of main/master.
+
 -Purge -OlderThanDays n permanently deletes archived run folders whose last recorded archive event
 (archived.json with role 'archive', written by this tool into the archive copy) is older than n
 days. Folders without that record (including the role 'source' pointers beside kept evidence) or
@@ -46,6 +52,8 @@ archive and is never called by release.ps1.
 ./tools/Invoke-ReleaseHousekeeping.ps1 -WhatIf
 .EXAMPLE
 ./tools/Invoke-ReleaseHousekeeping.ps1 -KeepReleases 2 -KeepBuilds 1 -KeepRuns 5
+.EXAMPLE
+./tools/Invoke-ReleaseHousekeeping.ps1 -Delete -KeepReleases 0 -KeepBuilds 1 -KeepRuns 1 -MinAgeHours 0.5 -WhatIf
 .EXAMPLE
 ./tools/Invoke-ReleaseHousekeeping.ps1 -Purge -OlderThanDays 90
 #>
@@ -60,10 +68,12 @@ param(
     # Copy, verify and remove even on the same volume (exercises the cross-volume path).
     [Parameter(ParameterSetName = 'Archive')][switch]$ForceCopy,
     [Parameter(ParameterSetName = 'Archive')][switch]$VerifyHash,
+    # Delete heavy payloads instead of moving them to ArchiveRoot (evidence stays).
+    [Parameter(ParameterSetName = 'Archive')][switch]$Delete,
     # Test seam: fail a verified copy after this many files (portable rollback test only).
     [Parameter(ParameterSetName = 'Archive', DontShow)][int]$TestFailCopyAfter = 0,
     [Parameter(Mandatory, ParameterSetName = 'Purge')][switch]$Purge,
-    [Parameter(Mandatory, ParameterSetName = 'Purge')][ValidateRange(1, 36500)][int]$OlderThanDays,
+    [Parameter(Mandatory, ParameterSetName = 'Purge')][ValidateRange(0, 36500)][int]$OlderThanDays,
     # Overrides ArchiveRoot from .local/config.json.
     [string]$ArchiveRoot,
     [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
@@ -541,9 +551,10 @@ foreach ($group in @($releases | Where-Object Published | Group-Object Item)) {
 }
 # Without a Workshop receipt the item is unknown: superseded only when older than every item's newest version.
 $newestEveryItem = if ($newestVersion.Count) { @($newestVersion.Values | Sort-Object)[0] } else { $null }
-if ($PublishedRun) { $keepRelease[$PublishedRun] = 'just published' }
+if ($PublishedRun -and !$Delete) { $keepRelease[$PublishedRun] = 'just published' }
 foreach ($release in $releases) {
     if ($keepRelease.ContainsKey($release.Name)) { foreach ($run in $release.Runs) { Set-Decision $run 'keep' $keepRelease[$release.Name] }; continue }
+    if ($Delete -and $release.Published) { foreach ($run in $release.Runs) { Set-Decision $run 'slim' 'published and verified' }; continue }
     $newest = if ($release.Item) { $newestVersion[$release.Item] } else { $newestEveryItem }
     if ($release.Version -and $newest -and $release.Version -lt $newest) {
         foreach ($run in $release.Runs) { Set-Decision $run 'slim' "superseded: $($release.Version) is older than published $newest" }; continue
@@ -588,6 +599,43 @@ $keptCount = $kept.Count
 $keptBytes = [long](@($kept | Where-Object Plan | ForEach-Object { $_.Plan.Bytes }) | Measure-Object -Sum).Sum
 $slimRuns = @($slim | Where-Object { $_.Plan.Moves.Count })
 $result | Add-Member -NotePropertyName KeptBytes -NotePropertyValue $keptBytes
+
+# --- Delete ------------------------------------------------------------------------------------
+if ($Delete) {
+    $freeBefore = Get-FreeSpace $repo
+    $result | Add-Member -NotePropertyName Deleted -NotePropertyValue ([Collections.Generic.List[object]]::new())
+    $result | Add-Member -NotePropertyName DeletedBytes -NotePropertyValue ([long]0)
+    foreach ($run in $slimRuns) {
+        $runBytes = [long]($run.Plan.Moves | Measure-Object Bytes -Sum).Sum
+        if (!$PSCmdlet.ShouldProcess("$($run.Path): $($run.Plan.Moves.Count) item(s), $(Format-Size $runBytes) ($($run.Reason))", 'Permanently delete')) { continue }
+        $items = [Collections.Generic.List[object]]::new()
+        foreach ($move in $run.Plan.Moves) {
+            $source = $move.Item.FullName
+            # Confinement: only content inside build/<run>, artifacts/<run> or .local/workshop-local-<utc>.
+            if (!(Test-Under $source $run.Info.FullName)) { throw "Refusing to delete outside $($run.Path): $source" }
+            $relative = [IO.Path]::GetRelativePath($repo, $source).Replace('\', '/')
+            $entry = [pscustomobject]@{ Path = $relative; Files = $move.Files; Bytes = $move.Bytes; Method = 'delete'; Detail = '' }
+            # Remove-TreeNoFollow measures first and throws on any link, so nothing is deleted through one.
+            try { Remove-TreeNoFollow $source; $result.Deleted.Add($entry); $result.DeletedBytes += $move.Bytes; $items.Add([ordered]@{ path = [IO.Path]::GetRelativePath($run.Info.FullName, $source).Replace('\', '/'); files = $move.Files; bytes = $move.Bytes; method = 'delete' }) }
+            catch { $entry.Detail = (Get-InnerException $_.Exception).Message; $result.Failed.Add($entry); Write-Warning "Release housekeeping: $relative not deleted: $($entry.Detail)" }
+        }
+        # Pointer beside the kept evidence (role 'source': never purged, never counted as an archive copy).
+        if ($items.Count) {
+            try { Add-ArchiveRecord $run.Info.FullName 'source' ([ordered]@{ archivedUtc = $now.ToString('o'); reason = $run.Reason; deleted = $true; items = @($items) }) }
+            catch { Write-Warning "Release housekeeping: could not write archived.json in $($run.Info.FullName): $((Get-InnerException $_.Exception).Message)" }
+        }
+    }
+    $keptText = "$keptCount run folder(s) in full ($(Format-Size $keptBytes))"
+    if ($WhatIfPreference) { Write-Host "Release housekeeping (WhatIf): would delete $($result.Planned.Count) item(s), $(Format-Size $result.PlannedBytes), from $($slimRuns.Count) run folder(s); would keep $keptText; evidence stays in place. Nothing changed." }
+    else {
+        Write-Host "Release housekeeping: deleted $($result.Deleted.Count) item(s), $(Format-Size $result.DeletedBytes), from $($slimRuns.Count) run folder(s); kept $keptText; receipts, manifests, notes and logs stay in place."
+        $freeAfter = Get-FreeSpace $repo
+        if ($freeBefore -and $freeAfter) { Write-Host "Free space: $(Format-SpaceChange '' $freeBefore $freeAfter.Free $false)." }
+    }
+    if ($result.Failed.Count) { Write-Host "Release housekeeping: $($result.Failed.Count) item(s) not deleted (in use or holding a link); they stay." }
+    if ($PassThru) { $result }
+    return
+}
 
 if (!$archive) {
     $line = if ($result.PlannedBytes) { "Release housekeeping: $(Format-Size $result.PlannedBytes) of superseded payloads in $($slimRuns.Count) run folder(s) could be archived" } else { 'Release housekeeping: nothing to archive' }

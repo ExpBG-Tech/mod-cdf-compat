@@ -1,7 +1,8 @@
 #requires -Version 7.0
 # Portable guard for tools/Invoke-ReleaseHousekeeping.ps1 on fake run folders: keep/move rules,
 # evidence in place, nothing deleted without -Purge, purge limited to the archive, links skipped,
-# failed copies leave the source intact, and release.ps1 calls it only after a verified publish.
+# failed copies leave the source intact, and release.ps1 calls it (through tools/Invoke-Cleanup.ps1)
+# only after a verified publish. Delete mode: tests/Test-Cleanup.ps1.
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 $tool = Join-Path $repo 'tools/Invoke-ReleaseHousekeeping.ps1'
@@ -385,8 +386,8 @@ try {
     # --- release.ps1 runs it only inside the verified -Publish path, never with -Purge ------------
     $tokens = $null; $errors = $null
     $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $repo 'release.ps1'), [ref]$tokens, [ref]$errors)
-    $calls = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.Extent.Text -match 'Invoke-ReleaseHousekeeping' }, $true))
-    Assert ($calls.Count -eq 1) 'release.ps1 calls housekeeping once.'
+    $calls = @($ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.Extent.Text -match 'Invoke-Cleanup' }, $true))
+    Assert ($calls.Count -eq 1) 'release.ps1 calls the cleanup (delete-mode housekeeping) once.'
     $call = $calls[0]
     Assert ($call.Extent.Text -match '-PublishedRun \$runName' -and $call.Extent.Text -notmatch '-Purge') 'release.ps1 passes the published run and never purges.'
     $guarded = $false

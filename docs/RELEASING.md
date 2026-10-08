@@ -30,6 +30,37 @@ Run folders are named `<family>-yyyyMMdd-HHmmss-fff` (UTC).
 
 `Get-LocalReleaseSource` reads Git (tags, `main`), not run folders.
 
+## Cleanup after a release and after every push of main
+
+`release.ps1 -Publish` ends with [`tools/Invoke-Cleanup.ps1`](../tools/Invoke-Cleanup.ps1), and
+`.githooks/pre-push` starts the same script in the background (hidden; log in `.local/cleanup.log`)
+whenever `main` or `master` is pushed. Enable the hook once per clone:
+
+```powershell
+pwsh -File tools/Install-GitHooks.ps1        # git config core.hooksPath .githooks
+```
+
+It runs `tools/Invoke-ReleaseHousekeeping.ps1 -Delete -KeepReleases 0 -KeepBuilds 1 -KeepRuns 1
+-MinAgeHours 0.5`: the heavy payloads of `build/<run>`, `artifacts/<run>` and
+`.local/workshop-local-<utc>` (addon snapshots, packed bundles, `data.pak`, zips, files of 1 MB or
+more) are **deleted**, not archived. Published releases (verified receipt) are slimmed at once.
+What stays: every receipt, manifest, change note, result and log (the release guards read them),
+the newest `build/local-*` snapshot and the installed build (`.local/last-build.json`), the newest
+run of every other family, anything changed in the last 30 minutes, the rest of `.local`
+(`config.json`, e2e profiles, art, notes), and the newest local install backup of each addon beside
+the Workbench addons folder. It does nothing while Arma Reforger, its server or Workbench is open,
+or while a release of this repository runs. Skip it for one push with `EXPBG_SKIP_CLEANUP=1 git push`.
+
+```powershell
+./tools/Invoke-Cleanup.ps1 -WhatIf     # list what would be deleted
+./tools/Invoke-Cleanup.ps1             # delete
+```
+
+The archive mode below stays available for a manual run; the release no longer uses it.
+`tools/Clear-WorkbenchLeftovers.ps1` (mod-gm-tools, one-time, dry run unless `-Apply`) removed the
+older leftovers outside the repositories: Workbench `LocalTest`/`Release`/`Staging`, Workbench's
+temporary Workshop bundles, old install backups and the `ArchiveRoot` contents.
+
 ## Release housekeeping
 
 [`tools/Invoke-ReleaseHousekeeping.ps1`](../tools/Invoke-ReleaseHousekeeping.ps1)

@@ -96,9 +96,10 @@ try {
     }
     "Receipt: $receiptPath" | Write-Host
     if ($Publish) {
-        # Reached only after a verified upload and a published GitHub release. Moves superseded
-        # payloads to ArchiveRoot (receipts stay); never deletes and never purges.
-        try { & "$repo/tools/Invoke-ReleaseHousekeeping.ps1" -PublishedRun $runName -Confirm:$false }
+        # Reached only after a verified upload and a published GitHub release. Deletes the heavy
+        # payloads of this and older runs (receipts, manifests, notes and logs stay; the newest
+        # build snapshot stays); see tools/Invoke-Cleanup.ps1.
+        try { & "$repo/tools/Invoke-Cleanup.ps1" -PublishedRun $runName -Confirm:$false }
         catch { Write-Warning "Release housekeeping did not finish; the release itself succeeded. $($_.Exception.Message)" }
     }
 } finally {

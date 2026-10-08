@@ -1,0 +1,29 @@
+#!/bin/sh
+# EXPBG: when main or master is pushed, start tools/Invoke-Cleanup.ps1 in the background (hidden,
+# detached; log in .local/cleanup.log). It only touches untracked build/, artifacts/ and .local/ run
+# payloads, so it never affects the push, and this hook always exits 0.
+# Enable once per clone: pwsh -File tools/Install-GitHooks.ps1. Skip once: EXPBG_SKIP_CLEANUP=1 git push.
+main=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main|refs/heads/master) main=1 ;;
+  esac
+done
+[ "$main" = 1 ] || exit 0
+[ -n "$EXPBG_SKIP_CLEANUP" ] && exit 0
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+[ -f "$root/tools/Invoke-Cleanup.ps1" ] || exit 0
+pwsh=$(command -v pwsh 2>/dev/null)
+for candidate in "$EXPBG_PWSH" "/c/Program Files/PowerShell/7/pwsh.exe" "$USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/native/powershell/pwsh.exe"; do
+  [ -n "$pwsh" ] && break
+  [ -n "$candidate" ] && [ -f "$candidate" ] && pwsh="$candidate"
+done
+if [ -z "$pwsh" ]; then
+  echo "EXPBG cleanup: PowerShell 7 not found; skipped (set EXPBG_PWSH)." >&2
+  exit 0
+fi
+win() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else printf '%s' "$1"; fi; }
+exe=$(win "$pwsh"); script=$(win "$root/tools/Invoke-Cleanup.ps1"); log=$(win "$root/.local/cleanup.log")
+"$pwsh" -NoProfile -NonInteractive -Command "Start-Process -WindowStyle Hidden -FilePath '$exe' -ArgumentList @('-NoProfile','-NonInteractive','-File','\"$script\"','-LogPath','\"$log\"')" >/dev/null 2>&1 \
+  && echo "EXPBG cleanup started in the background (log: .local/cleanup.log)." >&2
+exit 0
