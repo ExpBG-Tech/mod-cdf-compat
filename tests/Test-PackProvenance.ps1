@@ -38,7 +38,7 @@ foreach ($id in @($gmTools,$cdf)) { if (!$asset.description.Contains($id)) { thr
 
 # Module provenance: exact file inventory and Git blob identity (raw bytes, no filters).
 $moduleNames = @($pack.modules | ForEach-Object { $_.name })
-if ((@($moduleNames) -join ',') -cne 'unit-caching-cdf,intel-items-cdf,ambient-destruction-cdf,garrison-cdf,unit-dialog-cdf,ai-global-skills-cdf,ai-surrender-cdf') { throw 'Module list changed.' }
+if ((@($moduleNames) -join ',') -cne 'unit-caching-cdf,intel-items-cdf,ambient-destruction-cdf,garrison-cdf,unit-dialog-cdf,ai-global-skills-cdf,ai-surrender-cdf,unit-scripts-cdf') { throw 'Module list changed.' }
 $checked = 0
 $sourcesRoot = $env:EXPBG_SOURCES_ROOT
 if (!$sourcesRoot) { $sourcesRoot = Split-Path -Parent $repo }
@@ -89,6 +89,7 @@ $keys = @{
  'intel-items-cdf/Scripts/Game/EXPII/EII_CDFState.c' = @('"eiiIntel"', '"eirIntel"', '"cdfState"', '{D3DCA7AB761413C6}PrefabsEditable/EXPII/EII_ManualUS.et', '{AF2266B64D5D4750}PrefabsEditable/EXPII/EIR_ServerRackA.et', '{74CA7EB748CF82EC}PrefabsEditable/EXPII/EIR_USBDrive.et')
  'ambient-destruction-cdf/Scripts/Game/EAD_CDF/EAD_CDF.c' = @('"eadZone"', '"eadBuildings"', '"cdfOriginal"', 'EAD1000000000010')
  'unit-dialog-cdf/Scripts/Game/EXPUD_CDF/EUD_CDFState.c' = @('"eudDialog"', '"cdfState"', '"version"', '"name"', '"lines"', '"gesture"')
+ 'unit-scripts-cdf/Scripts/Game/EXPUS_CDF/EUS_CDFState.c' = @('"eusScript"', '"cdfState"')
 }
 foreach ($path in $keys.Keys) {
  $text = Get-Content -LiteralPath "$repo/addon/$path" -Raw

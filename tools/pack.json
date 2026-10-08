@@ -120,6 +120,14 @@
         "repository": "ExpBG-Tech/mod-cdf-compat",
         "note": "Developed in this repository. Prisoners are session-only under CDF: they are left out of every CDF save, and a CDF load removes the prisoners whose squad CDF manages (recorded at surrender) and releases their interrogation points."
       }
+    },
+    {
+      "name": "unit-scripts-cdf",
+      "title": "Unit Scripts CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. Saves each scripted AI soldier's Hold position, Freeze or ambient animation (script code, held spot and heading, through the GM Tools EUS_UnitState API) in its CDF state and restores it after CDF's deferred state pass; a structurally broken envelope is refused before CDF clears the scene, an unreadable script only loses that script."
+      }
     }
   ],
   "merge": [],
