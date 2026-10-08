@@ -2,6 +2,7 @@
 
 ## 0.1.8
 
+- Built against EXPBG GM Tools 0.1.15 (pinned in `tools/pack.json`).
 - Intel Items CDF: CDF saves cost less. Each captured entity allocates nothing
   until it holds intel, a server rack or a USB drive, and a captured inventory
   is walked once for carried intel and carried drives instead of twice. The
