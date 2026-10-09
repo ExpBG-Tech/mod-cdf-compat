@@ -24,6 +24,8 @@ assembles them into one project, the same way EXPBG GM Tools is built.
 | Unit Dialog CDF | `addon/unit-dialog-cdf` | Developed here (0.1.4) |
 | AI Global Skills CDF | `addon/ai-global-skills-cdf` | Developed here (0.1.4) |
 | AI Surrender CDF | `addon/ai-surrender-cdf` | Developed here (0.1.4) |
+| Unit Scripts CDF | `addon/unit-scripts-cdf` | Developed here (0.1.10) |
+| Inventory CDF | `addon/inventory-cdf` | Developed here (0.1.10) |
 
 Exact source commits, Git blob IDs of every imported file and the former
 Workshop IDs are recorded in [`tools/pack.json`](tools/pack.json). Imported
@@ -48,7 +50,7 @@ Load all three on the server and every client:
 | Addon | Workshop ID | Notes |
 |---|---|---|
 | Arma Reforger | `58D0FB3206B6F859` | Base game |
-| [EXPBG GM Tools](https://reforger.armaplatform.com/workshop/FC1402F65B2F4A45) | `FC1402F65B2F4A45` | Requires 0.1.11 or later (pinned in `tools/pack.json`) |
+| [EXPBG GM Tools](https://reforger.armaplatform.com/workshop/FC1402F65B2F4A45) | `FC1402F65B2F4A45` | Requires 0.1.18 or later (pinned in `tools/pack.json`) |
 | [CDF Game Master Save](https://reforger.armaplatform.com/workshop/6A1876F37D65AB09) | `6A1876F37D65AB09` | Targets 1.4.1; separately authored and licensed |
 
 Not the standalone EXPBG GM Optimizer, Intel Items or Ambient Destruction mods.

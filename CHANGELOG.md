@@ -7,6 +7,13 @@
   deferred state pass, once the soldier's AI is ready. A damaged script envelope is refused before CDF
   clears the scene; an unreadable script only loses that soldier's script. Character inventories pass
   through unchanged. Requires EXPBG GM Tools 0.1.18 (unit script state API).
+- New Inventory CDF module: after a CDF load, restored AI characters, vehicles and crates get back
+  the saved items CDF's own inventory restore lost (mostly spare magazines and grenades its
+  fallback swapped into an occupied weapon or grenade slot, where they replaced the equipped item).
+  Only missing items are added: back into their saved pouch or any storage with room, never by
+  replacing an item, never more than were saved, never items CDF itself refused, never on players.
+  Existing saves load unchanged; each load logs one `[EXPBG CDF INV]` summary.
+- Expected Unit Scripts refusals (a damaged save, one unreadable script) log as warnings.
 
 ## 0.1.9
 

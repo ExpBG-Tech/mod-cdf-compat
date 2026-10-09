@@ -7,7 +7,7 @@
   "minGameVersion": 1,
   "private": false,
   "unlisted": true,
-  "description": "# EXPBG CDF Compat\n\n- Garrisons, Full-cached squads and cache zones are saved in CDF Game Master Save files and restored on load.\n- Intel items, server racks and USB drives keep their contents.\n- Unit Dialog lines, AI Global Skills settings and combat modes are kept.\n- Surrender prisoners are released cleanly on load.\n- Ambient Destruction scenery and building damage are kept.\n- Requires: EXPBG GM Tools (FC1402F65B2F4A45) and CDF Game Master Save (6A1876F37D65AB09).",
+  "description": "# EXPBG CDF Compat\n\n- Garrisons, Full-cached squads and cache zones are saved in CDF Game Master Save files and restored on load.\n- Intel items, server racks and USB drives keep their contents.\n- Unit Dialog lines, AI Global Skills settings and combat modes are kept.\n- Surrender prisoners are released cleanly on load.\n- Unit Scripts (Hold, Freeze, ambient animations) are kept on their spots.\n- Soldiers get back the items CDF's own inventory restore loses.\n- Ambient Destruction scenery and building damage are kept.\n- Requires: EXPBG GM Tools (FC1402F65B2F4A45) and CDF Game Master Save (6A1876F37D65AB09).",
   "summary": "CDF Game Master Save support for EXPBG GM Tools: garrisons, unit caching, intel items, dialog, AI skills, surrender and destruction in CDF saves.",
   "license": "Arma Public License (APL)",
   "tags": [
