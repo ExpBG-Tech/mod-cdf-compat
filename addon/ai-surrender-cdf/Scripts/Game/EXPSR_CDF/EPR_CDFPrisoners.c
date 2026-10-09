@@ -851,7 +851,8 @@ class EPR_CDF
    forward[1] = 0;
    forward.Normalize();
    // Side by side along the vehicle, one metre apart.
-   float shift = (moved % 5) - 2;
+   int slot = moved - (moved / 5) * 5;
+   float shift = slot - 2;
    vector spot = center + right * reach + forward * shift;
    spot[1] = GetGame().GetWorld().GetSurfaceY(spot[0], spot[2]);
    vector angles = vehicle.GetYawPitchRoll();

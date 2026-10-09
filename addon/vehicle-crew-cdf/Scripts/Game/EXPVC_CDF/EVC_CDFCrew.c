@@ -853,7 +853,7 @@ class EVC_CDF
   vector maxs;
   holder.GetBounds(mins, maxs);
   float side = Math.Clamp(maxs[0] + 1.0, 1.0, 6.0);
-  int row = seat.m_iOrdinal % 5;
+  int row = seat.m_iOrdinal - (seat.m_iOrdinal / 5) * 5;
   float along = Math.Min(mins[2] + 0.5 + row * 0.9, maxs[2]);
   vector position = holder.CoordToParent(Vector(side, 0, along));
   vector origin = holder.GetOrigin();
