@@ -118,7 +118,7 @@
       "title": "AI Surrender CDF",
       "origin": {
         "repository": "ExpBG-Tech/mod-cdf-compat",
-        "note": "Developed in this repository. Prisoners are session-only under CDF: they are left out of every CDF save, and a CDF load removes the prisoners whose squad CDF manages (recorded at surrender) and releases their interrogation points."
+        "note": "Developed in this repository. Prisoners are saved with CDF (0.1.11): each EXPBG AI Surrender prisoner of a CDF-managed squad (recorded at surrender) and each ACE Captives surrendered or handcuffed soldier CDF saves carries an eprPrisoner envelope (prisoner record, interrogation progress, dossier, his squad's eprSquad token, ACE flags, held weapons); a load holds him passive from the moment CDF spawns him and, after CDF's deferred state pass, surrenders him again through AI Surrender or re-applies ACE's own state, never re-armed. Saves without envelopes load as before: a load removes the prisoners whose squad CDF manages and releases their interrogation points. EPR_CDF.IsCaptiveSeat tells other bridges which characters are captives."
       }
     },
     {
@@ -135,6 +135,14 @@
       "origin": {
         "repository": "ExpBG-Tech/mod-cdf-compat",
         "note": "Developed in this repository. After a CDF load, gives each restored AI character, vehicle or crate back the saved items CDF 1.4.1's inventory restore lost (items its engine fallback re-placed that then vanished): only the missing ones, into their saved storage or any storage with room, never more than were saved and never the items CDF itself refused; players are never touched and nothing new is saved."
+      }
+    },
+    {
+      "name": "vehicle-crew-cdf",
+      "title": "Vehicle Crew CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. Saves the seat of every AI soldier sitting in a vehicle, static weapon or sittable prop (compartment type and index, CDF's own crew link to a saved vehicle, prefab and spot of a prop CDF does not save) and adds the default crews of saved vehicles that CDF 1.4.1 skipped (no author) as ordinary CDF records; after a load each restored crew member is moved straight into his saved seat, or stands next to it when the seat is gone or taken. Players, prisoners, garrison guards, reserved groups and ACE animation helpers are never touched; older readers ignore the seat key."
       }
     }
   ],

@@ -23,6 +23,32 @@ and a save with an unreadable ledger refused once and loaded without garrisons
 on confirmation. It is warm (one process): a cold restart, GM dialogs and
 multiplayer remain live gates.
 
+## Prisoner bridge (Unreleased)
+
+Portable: `tests/Test-PrisonersCdf.ps1` checks the `eprPrisoner`/`eprSquad`
+envelopes, unwrap before super, prisoner records added inside CDF's Capture,
+refusals before the clear, the spawn-time hold, the bounded pass after CDF's
+deferred state pass, the summary line, legacy clearing, players untouched, ACE
+reached by name only and the fixture wiring.
+
+Native (orchestrator slot), in one diagnostic server with installed CDF 1.4.1:
+
+```powershell
+pwsh -File tests/Run-CdfRoundTrip.ps1 -GmToolsSnapshot <built EXPBG_GM_Tools> -SourceSnapshot <built EXPBG_CDF_Compat> -FixturePath tests/EPR_CDFPrisonersRoundTrip.c -ExpectResult '\[EXPG PRISONER CDF ROUNDTRIP RESULT\] checks=[1-9]\d* failures=0 saved=(?:2 restored=2 esr=2 ace=skipped held=2|3 restored=3 esr=2 ace=1 held=3) duplicates=0 brokenRefused=1 legacyCleared=1 reason=completed' -TimeoutSeconds 600 -OrchestratorSlotGranted
+```
+
+An authored US fire team; two soldiers surrender through AI Surrender (one
+plain, one partly interrogated: attempts, revealed squad, intel answer, squad
+override, dossier). Real CDF capture (both prisoners added once, the team
+tokened), a broken prisoner envelope refused before the clear, a load holding
+every prisoner passive as CDF spawns it, then the same prisoners once each with
+their record, squad link, dossier, side, interrogation point, passive AI, no
+weapons and pose; a save without prisoner records (0.1.10 behaviour) clears
+them. The runner loads no ACE, so the ACE handcuffed case prints one skip line
+(`ace=skipped`); with ACE Captives loaded it expects `saved=3 ... ace=1`.
+Warm (one process): a cold restart, prisoners in vehicles, ACE escort, GM
+dialogs and multiplayer remain live gates.
+
 ## 0.1.0 status (2026-10-05)
 
 - Native compile (2026-10-05, `build/local-20261005-110226-638`): `./build.ps1
@@ -55,6 +81,7 @@ multiplayer remain live gates.
 | Intel Items | World item and AI/container inventory round trips; title/text/spent/diagnostics; no startup audio on restore |
 | Ambient Destruction | Exact scenery and building ledger replay with `clearBeforeLoad` and `repairDuplicatesOnLoad`; rejection when either is off |
 | Garrison | Native in-process round trip `tests/Run-CdfRoundTrip.ps1` (see below); then a live GM save (and an autosave) with awake, Simulation and Full garrisons active, a cold server restart and load: same garrisons, posts, cache states, no duplicates, no `[EBG CDF HOLD]`; append load and an unreadable ledger refused with the dialog; a client joining after the load sees the squads |
+| Prisoners | Native round trip `tests/EPR_CDFPrisonersRoundTrip.c` (see above); then a live GM save with AI Surrender prisoners (seated, mid-interrogation) and, in the production modset, ACE surrendered and handcuffed AI, a cold restart and load: same prisoners once, interrogation points answer as before, nobody re-armed or hostile, `[EXPBG CDF PRISONERS] ... failed=0`; a 0.1.10 save still removes stale prisoners |
 | Older saves | A document written with the standalone mods and companions loads with GM Tools and this pack; a GM Tools-only document with Intel or Destruction rejects before clearing |
 | Multiplayer | Dedicated server and client with the same frozen modset |
 | Publication | Immutable `v0.1.1` tag (0.1.0 retired: its Publish Project step timed out before upload), Workbench Publish Project (first publication), Unlisted APL-SA listing, five package files and hashes |

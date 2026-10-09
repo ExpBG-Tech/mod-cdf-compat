@@ -52,6 +52,7 @@ companions:
 | Unit Caching | `ebgCache` + `cdfState` on each cache zone | `ebgCacheVersion` 1, zone settings (`ebgZoneVersion` 4/5), cached groups: group snapshot, survivors (prefab, matrix, author), casualty count |
 | Intel Items | `eiiIntel` + `cdfState` on intel items and inventory carriers | version 1: prefab, title, content, spent, diagnostics; carried copies per inventory (max 400) |
 | Ambient Destruction | `eadZone` + `cdfOriginal` per zone; `eadBuildings` + `cdfOriginal` around the world state | zone snapshot (settings, exact scenery records); building ledger (schema 1/2) |
+| Prisoners (AI Surrender, ACE Captives) | `eprPrisoner` + `cdfState` on each prisoner; `eprSquad` + `cdfState` on the squad he left | version 1: AI Surrender record (side, attempts, answer, revealed squad, intel answers, squad overrides, dossier, ACE fallback), squad token, ACE surrendered/captive/carried flags, weapon prefabs held, AI on/off |
 
 CDF documents record prefab resource names, not addon IDs, so a document written
 with the standalone mods and companions references the same prefabs and payload
@@ -127,6 +128,38 @@ Not covered by the bridge: a save made with the bridge loaded without it (CDF
 then cannot read its world attributes and the garrisons are lost, as with the
 Ambient Destruction envelope); scenario-placed squads garrisoned in a scenario
 that recreates them on a cold start (CDF does not own scenario entities either).
+
+## Prisoners under CDF
+
+Bridge: `addon/ai-surrender-cdf/Scripts/Game/EXPSR_CDF/EPR_CDFPrisoners.c`
+(0.1.4 to 0.1.10: prisoners were session-only).
+
+- Save: every living, non-player AI Surrender prisoner or ACE Captives
+  surrendered, handcuffed or escorted soldier that CDF saves carries an
+  `eprPrisoner` envelope; his squad's record an `eprSquad` token. A prisoner of a
+  CDF-managed squad (recorded at surrender) has no author, so CDF's own capture
+  skips him: the bridge adds a root record built like CDF's while CDF's Capture
+  is still running (its closing `GetEntityCount` call on the new document), so
+  every adapter's document checks see it. CDF binds `ShouldCapture` statically;
+  this is the last hook before `Capture` returns. Clear removes exactly the
+  prisoners a save keeps (`IsManaged`). A prisoner in a real vehicle is saved
+  standing beside it.
+- Load: a broken envelope is refused before the clear. Each prisoner record is
+  held (AI off, civilian side) in `SCR_EditableCharacterComponent.EOnEditorSessionLoad`,
+  which CDF calls right after binding the record. `CDF_GMSaveState.Apply`
+  unwraps before super; after CDF's deferred pass a pump (4 prisoners per 100
+  ms) deletes weapons beyond the save, surrenders AI Surrender prisoners again
+  through `ESR_SurrenderManager.Surrender` and writes their saved record over
+  the fresh one (new map markers are not saved), and re-applies ACE state
+  through ACE's `ACE_Captives_SetCaptive` (by name) or GM Tools'
+  `ESR_AceCaptives.SetSurrender`. One `[EXPBG CDF PRISONERS]` summary per load.
+- Shared rule with the vehicle crew bridge: `EPR_CDF.IsCaptiveSeat(character)`
+  is true for occupants of ACE animation helpers, AI Surrender prisoners and ACE
+  surrendered/captive/carried soldiers; the crew bridge skips them.
+- Not restored: ACE escort (the carrier is a player), a prisoner's vehicle seat,
+  map markers of earlier answers. Without ACE at load, ACE captives load as
+  CDF alone restores them (counted as failed); AI Surrender prisoners saved in
+  ACE's pose take the vanilla sit.
 
 ## Native builds and dependencies
 

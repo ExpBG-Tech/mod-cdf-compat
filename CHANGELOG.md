@@ -1,5 +1,24 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.11
+
+- New Vehicle Crew module: AI soldiers sitting in vehicles, static weapons and sittable props
+  (for example the chairs of Heine's asset pack) keep their seat through a CDF save and load.
+  Each saved soldier stores his seat (type and index, plus prefab and spot for a prop CDF does
+  not save) under an extra `evcSeat` key and CDF's own crew link; the default crews of saved
+  vehicles that CDF skipped are added as ordinary CDF records with the vehicle's author. After a
+  load each crew member is moved straight into his saved seat (no walking, nothing spawned);
+  a seat that is gone or taken leaves him standing beside it. Players, prisoners, garrison
+  guards, reserved groups and ACE animation helpers are never touched. Older readers ignore
+  the key. Each load logs one `[EXPBG CDF CREW]` summary.
+- Prisoners are saved with CDF: EXPBG AI Surrender prisoners and ACE Captives surrendered or
+  handcuffed soldiers carry an `eprPrisoner` envelope (prisoner record, interrogation progress,
+  dossier, ACE flags, held weapons; their squad an `eprSquad` token). A load holds them passive
+  from the moment CDF spawns them, then surrenders them again with their saved record and
+  re-applies the ACE state. A damaged envelope is refused before CDF clears the scene. Saves
+  without envelopes load as before. Each load logs one `[EXPBG CDF PRISONERS]` summary. This
+  replaces the 0.1.4 rule that released prisoners on load.
+
 ## 0.1.10
 
 - New Unit Scripts bridge: CDF saves now keep each AI soldier's Hold position, Freeze or ambient

@@ -23,9 +23,10 @@ assembles them into one project, the same way EXPBG GM Tools is built.
 | Garrison CDF bridge | `addon/garrison-cdf` | Developed here (0.1.6; replaces the 0.1.5 guard) |
 | Unit Dialog CDF | `addon/unit-dialog-cdf` | Developed here (0.1.4) |
 | AI Global Skills CDF | `addon/ai-global-skills-cdf` | Developed here (0.1.4) |
-| AI Surrender CDF | `addon/ai-surrender-cdf` | Developed here (0.1.4) |
+| AI Surrender CDF | `addon/ai-surrender-cdf` | Developed here (0.1.4; prisoners saved since 0.1.11) |
 | Unit Scripts CDF | `addon/unit-scripts-cdf` | Developed here (0.1.10) |
 | Inventory CDF | `addon/inventory-cdf` | Developed here (0.1.10) |
+| Vehicle Crew CDF | `addon/vehicle-crew-cdf` | Developed here (0.1.11) |
 
 Exact source commits, Git blob IDs of every imported file and the former
 Workshop IDs are recorded in [`tools/pack.json`](tools/pack.json). Imported
