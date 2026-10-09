@@ -179,6 +179,21 @@ class EXPG_CdfRoundTrip : GenericEntity
   }
   return found.Count();
  }
+ // Diagnostics: every living soldier near the team, one line each.
+ void DumpSoldiers(string label)
+ {
+  array<SCR_ChimeraCharacter> soldiers = {};
+  Soldiers(soldiers);
+  foreach (SCR_ChimeraCharacter soldier : soldiers)
+  {
+   SCR_AIGroup group = ESR_SurrenderManager.GroupOf(soldier);
+   SCR_EditableEntityComponent editable = SCR_EditableEntityComponent.GetEditableEntity(soldier);
+   bool managed = editable && CDF_GMSaveCapture.IsManaged(editable);
+   string faction = "";
+   if (soldier.GetFaction()) faction = soldier.GetFaction().GetFactionKey();
+   Print(string.Format("[EXPG PRISONER CDF ROUNDTRIP SOLDIER] %1 id=%2 group=%3 oldTeam=%4 prisoner=%5 managed=%6 faction=%7 pos=%8", label, soldier.GetID(), group, group == m_Team, ESR_SurrenderManager.FindPrisoner(soldier) != null, managed, faction, soldier.GetOrigin()));
+  }
+ }
  // AI Surrender prisoners within 30 m of the team's spot.
  int PrisonersNear()
  {
@@ -522,6 +537,7 @@ class EXPG_CdfRoundTrip : GenericEntity
   if (Check(broken == 1 && refused && stillThere == m_iExpected, string.Format("a broken prisoner envelope is refused before the clear (%1 prisoners still there)", stillThere))) m_iBrokenRefused = 1;
   // 4. Load.
   Advance(3);
+  DumpSoldiers("beforeLoad");
   if (!Check(CDF_GMSaveRestore.Restore(m_Loaded), "CDF restore with clearBeforeLoad"))
   {
    Finish("restore");
@@ -552,6 +568,7 @@ class EXPG_CdfRoundTrip : GenericEntity
   m_iEsr = EPR_CDF.s_iLastEsr;
   Check(EPR_CDF.s_iLastFailed == 0 && EPR_CDF.s_iLastExpected == m_iExpected, string.Format("the pass restored every expected prisoner without failure (restored %1 expected %2 failed %3)", m_iRestored, EPR_CDF.s_iLastExpected, EPR_CDF.s_iLastFailed));
   array<SCR_ChimeraCharacter> soldiers = {};
+  DumpSoldiers("afterLoad");
   int found = Soldiers(soldiers);
   if (found > 4) m_iDuplicates = found - 4;
   Check(found == 4, string.Format("four soldiers near the team, nobody twice (%1)", found));
@@ -644,6 +661,7 @@ class EXPG_CdfRoundTrip : GenericEntity
   int found = Soldiers(soldiers);
   // The two soldiers who stayed in the team (an ACE captive among them loads as CDF alone
   // restores him: the stripped save holds no prisoner envelope).
+  DumpSoldiers("afterLegacy");
   bool cleared = PrisonersNear() == 0 && found == 2 && EPR_CDF.s_iLastRestored == 0;
   if (Check(cleared, string.Format("the legacy load cleared the restored prisoners and restored none (%1 prisoners, %2 soldiers, restored %3)", PrisonersNear(), found, EPR_CDF.s_iLastRestored))) m_iLegacyCleared = 1;
   Finish("completed");

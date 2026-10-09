@@ -18,6 +18,10 @@
   re-applies the ACE state. A damaged envelope is refused before CDF clears the scene. Saves
   without envelopes load as before. Each load logs one `[EXPBG CDF PRISONERS]` summary. This
   replaces the 0.1.4 rule that released prisoners on load.
+- A squad saved with fewer members than its prefab (prisoners taken out, casualties) loads
+  with exactly its saved members. Before, the squad prefab topped itself up to its full roster
+  next to the restored soldiers. Squads saved without member records are unchanged. Each load
+  that keeps rosters logs one `[EXPBG CDF ROSTER]` line.
 
 ## 0.1.10
 

@@ -1029,6 +1029,42 @@ class EPR_CDF
   Schedule(FIRST_PUMP_MS);
  }
 
+ // After CDF's Restore spawned the records: a squad prefab queues its whole prefab roster
+ // when it spawns, so a squad saved with fewer members (prisoners taken out, casualties)
+ // would be topped up again next to its restored members. Every restored squad with at
+ // least one saved member keeps exactly those members (GM Tools' captured-roster rule, as
+ // for Full-cached squads). Squads saved without member records keep the native roster.
+ static int KeepSavedRosters(CDF_GMSaveDocument document)
+ {
+  if (!document || !document.m_aEntities || !Replication.IsServer())
+  {
+   return 0;
+  }
+  int count = document.m_aEntities.Count();
+  array<int> members = {};
+  members.Resize(count);
+  for (int i = 0; i < count; i++)
+  {
+   members[i] = 0;
+  }
+  foreach (CDF_GMSaveEntityRecord child : document.m_aEntities)
+  {
+   if (child && child.m_Entity && child.m_iParent >= 0 && child.m_iParent < count) members[child.m_iParent] = members[child.m_iParent] + 1;
+  }
+  int kept = 0;
+  for (int j = 0; j < count; j++)
+  {
+   CDF_GMSaveEntityRecord record = document.m_aEntities[j];
+   if (!record || !record.m_Entity || members[j] == 0) continue;
+   SCR_AIGroup group = SCR_AIGroup.Cast(record.m_Entity.GetOwner());
+   if (!group) continue;
+   group.EBG_UseCapturedRoster();
+   kept++;
+  }
+  if (kept > 0) Print(string.Format("[EXPBG CDF ROSTER] squads=%1 keep their saved members (no prefab top-up)", kept));
+  return kept;
+ }
+
  // SCR_EditableCharacterComponent.EOnEditorSessionLoad, while CDF spawns: CDF has bound
  // the record to this entity (SpawnRecord sets m_Entity first).
  static void HoldSpawned(SCR_EditableEntityComponent editable)
@@ -1671,6 +1707,7 @@ modded class CDF_GMSaveRestore
   EPR_CDF.s_bSpawning = true;
   bool result = super.Restore(document);
   EPR_CDF.s_bSpawning = false;
+  if (result) EPR_CDF.KeepSavedRosters(document);
   EPR_CDF.ReleaseRemoved(live);
   EPR_CDF.EndSpawn(result);
   return result;
