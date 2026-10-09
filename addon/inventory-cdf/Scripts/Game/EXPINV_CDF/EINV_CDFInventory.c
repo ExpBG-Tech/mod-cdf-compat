@@ -364,7 +364,11 @@ class EINV_CDF
   return false;
  }
  // Saved indexes still missing: saved multiset minus CDF's refusals minus what the entity
- // holds (CDF's capture traversal). For a prefab missing k times, its last k saved entries.
+ // holds (CDF's capture traversal). For a prefab missing k times: its last k cargo entries
+ // first, its equipment entries only after them. The equipped one (a weapon's loaded
+ // magazine, the grenade slot) is normally still in place, so a missing grenade or
+ // magazine belongs back in a pouch (native run 2026-10-09: picking the equipped entry left
+ // its occupied slot as the only target and the item unplaced).
  protected static void Plan(EINV_Entry entry, IEntity entity, notnull array<int> missing)
  {
   missing.Clear();
@@ -379,9 +383,13 @@ class EINV_CDF
   array<string> held = {};
   CDF_GMSaveState.EINV_Live(entity, held);
   foreach (string heldPrefab : held) Take(need, heldPrefab);
-  for (int i = entry.m_aPrefabs.Count() - 1; i >= 0; i--)
+  for (int cargo = entry.m_aPrefabs.Count() - 1; cargo >= 0; cargo--)
   {
-   if (Take(need, entry.m_aPrefabs[i])) missing.Insert(i);
+   if (entry.m_aStructural[cargo] == 0 && Take(need, entry.m_aPrefabs[cargo])) missing.Insert(cargo);
+  }
+  for (int equipped = entry.m_aPrefabs.Count() - 1; equipped >= 0; equipped--)
+  {
+   if (entry.m_aStructural[equipped] != 0 && Take(need, entry.m_aPrefabs[equipped])) missing.Insert(equipped);
   }
   missing.Sort();
  }
@@ -482,8 +490,9 @@ class EINV_CDF
   }
   return false;
  }
- // Its saved storage first (equipment only there, in its saved slot or that storage's next
- // free one); cargo then goes to any deposit storage with room.
+ // Its saved storage first (equipment there, in its saved slot or that storage's next free
+ // one); cargo, and a magazine whose weapon is loaded already, then go to any deposit
+ // storage with room. Other equipment (clothing, weapons, gadgets) is never put in cargo.
  protected static bool Insert(EINV_Entry entry, InventoryStorageManagerComponent manager, int index, IEntity item)
  {
   array<BaseInventoryStorageComponent> candidates = {};
@@ -501,7 +510,7 @@ class EINV_CDF
     return true;
    }
   }
-  if (equipment)
+  if (equipment && !item.FindComponent(BaseMagazineComponent))
   {
    return false;
   }

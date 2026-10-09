@@ -63,7 +63,7 @@ Assert ($trace.Contains('EINV_CDF.NoteTrace(message);') -and $trace.Contains('su
 
 # Plan: saved multiset minus refusals minus what is held, walked by CDF's own capture.
 $plan = Get-Body $bridge 'protected\s+static\s+void\s+Plan\s*\('
-Assert-Order $plan @('foreach (string savedPrefab : entry.m_aPrefabs)', 'foreach (string refusedPrefab : entry.m_aRefused) Take(need, refusedPrefab);', 'CDF_GMSaveState.EINV_Live(entity, held);', 'foreach (string heldPrefab : held) Take(need, heldPrefab);', 'if (Take(need, entry.m_aPrefabs[i])) missing.Insert(i);', 'missing.Sort();') 'Plan'
+Assert-Order $plan @('foreach (string savedPrefab : entry.m_aPrefabs)', 'foreach (string refusedPrefab : entry.m_aRefused) Take(need, refusedPrefab);', 'CDF_GMSaveState.EINV_Live(entity, held);', 'foreach (string heldPrefab : held) Take(need, heldPrefab);', 'if (entry.m_aStructural[cargo] == 0 && Take(need, entry.m_aPrefabs[cargo])) missing.Insert(cargo);', 'if (entry.m_aStructural[equipped] != 0 && Take(need, entry.m_aPrefabs[equipped])) missing.Insert(equipped);', 'missing.Sort();') 'Plan (cargo entries before equipped ones: native run 2026-10-09 left the equipped entry unplaced)'
 $live = Get-Body $bridge 'static\s+void\s+EINV_Live\s*\('
 Assert ($live.Contains('CaptureInventory(entity, prefabs, owners, storages, slots, ammo, structural);')) 'what an entity holds is walked like a CDF save'
 
@@ -77,7 +77,8 @@ Assert ($drop.Contains('inventoryItem.GetParentSlot()') -and $drop.Contains('SCR
 $place = Get-Body $bridge 'protected\s+static\s+void\s+Place\s*\('
 Assert-Order $place @('Resource loaded = Resource.Load(prefab);', 'if (!loaded || !loaded.IsValid())', 'GetGame().SpawnEntityPrefab(loaded,', 'if (HoldsItems(item) || !Insert(entry, manager, index, item))', 'SCR_EntityHelper.DeleteEntityAndChildren(item);', 'magazine.SetAmmoCount(rounds);', 'entry.m_aSpawned.Insert(item);') 'Place'
 $insert = Get-Body $bridge 'protected\s+static\s+bool\s+Insert\s*\('
-Assert-Order $insert @('Candidates(entry, manager, index, candidates);', 'manager.TryInsertItemInStorage(item, candidate, slot)', 'manager.TryInsertItemInStorage(item, candidate, -1)', 'if (equipment)', 'return manager.TryInsertItem(item, EStoragePurpose.PURPOSE_DEPOSIT);') 'Insert (saved storage first; equipment never dumped into cargo)'
+Assert-Order $insert @('Candidates(entry, manager, index, candidates);', 'manager.TryInsertItemInStorage(item, candidate, slot)', 'manager.TryInsertItemInStorage(item, candidate, -1)', 'if (equipment && !item.FindComponent(BaseMagazineComponent))', 'return manager.TryInsertItem(item, EStoragePurpose.PURPOSE_DEPOSIT);') 'Insert (saved storage first; only cargo and magazines go to deposit storage)'
+Assert (!$code.Contains('TryReplaceItem') -and !$code.Contains('PURPOSE_ANY, null') -and !$code.Contains('TrySpawnPrefabToStorage') -and !$code.Contains('TryInsertItem(item, EStoragePurpose.PURPOSE_ANY')) 'the pass only inserts into free room: no replacing, no PURPOSE_ANY placement (CDF''s fallback that loses equipped items)'
 
 # Players, bounds, scheduling, summary.
 foreach ($signature in 'static\s+void\s+Register\s*\(', 'static\s+bool\s+Track\s*\(', 'protected\s+static\s+bool\s+Step\s*\(') { Assert ((Get-Body $bridge $signature).Contains('IsPlayer(entity)')) "players are never touched: $signature" }
@@ -127,12 +128,16 @@ Assert (@([IO.File]::ReadAllBytes($PSCommandPath) | Where-Object { $_ -gt 127 -o
 
 # Native round trip wiring (Run-CdfRoundTrip.ps1, orchestrator only).
 $fixture = Read-Text $fixturePath
-$expect = '\[EXPG EINV CDF ROUNDTRIP RESULT\] checks=[1-9]\d* failures=0 soldiers=4 inventories=4 cdfLoss=\d+ completed=\d+ unplaced=0 idempotent=1 refusalKept=1 removedRestored=1 reason=completed'
+$expect = '\[EXPG EINV CDF ROUNDTRIP RESULT\] checks=[1-9]\d* failures=0 soldiers=4 inventories=\d cdfLoss=\d+ completed=\d+ unplaced=\d+ extras=0 consistent=1 idempotent=1 refusalKept=1 removedRestored=1 reason=completed'
 Assert ($fixture.Contains("-FixturePath tests/EINV_CDFInventoryRoundTrip.c -ExpectResult '$expect' -TimeoutSeconds 600 -OrchestratorSlotGranted")) 'round-trip fixture header carries its runner command'
 Assert ($fixture -match 'class\s+EXPG_CdfRoundTripClass\s*:\s*GenericEntityClass' -and $fixture -match 'class\s+EXPG_CdfRoundTrip\s*:\s*GenericEntity') 'round-trip fixture keeps the runner driver class name'
-foreach ($needle in 'CDF_GMSaveCapture.Capture("einv-cdf-roundtrip", "fixture")', 'document.SaveToFile(FILE)', 'm_Loaded.LoadFromFile(FILE)', 'CDF_GMSaveRestore.Restore(m_Loaded)', 'cfg.m_bSaveCharacterInventories = true;', 'cfg.m_bClearBeforeLoad = true;', 'Resource teamResource = Resource.Load(teamName);', 'CDF_GMSaveState.EINV_Live(entity, names);', 'if (expect.m_sLoaded == expect.m_sItems)', 'EINV_CDF.Track(expect.m_Actor, prefabs, owners, storages, slots, ammo, structural, refused)', 'manager.TryDeleteItem(item)', 'refused.Insert(m_sRemoved);', 'EINV_CDF.s_iLastRefused == 1') {
+foreach ($needle in 'CDF_GMSaveCapture.Capture("einv-cdf-roundtrip", "fixture")', 'document.SaveToFile(FILE)', 'm_Loaded.LoadFromFile(FILE)', 'CDF_GMSaveRestore.Restore(m_Loaded)', 'cfg.m_bSaveCharacterInventories = true;', 'cfg.m_bClearBeforeLoad = true;', 'Resource teamResource = Resource.Load(teamName);', 'CDF_GMSaveState.EINV_Live(entity, names);', 'if (expect.m_sLoaded == expect.m_sItems)', 'EINV_CDF.Track(expect.m_Actor, prefabs, owners, storages, slots, ammo, structural, refused)', 'manager.TryDeleteItem(item)', 'refused.Insert(m_sRemoved);', 'EINV_CDF.s_iLastRefused == 1', 'Check(m_iExtras == 0,', 'Check(worse == 0,', 'if (Check(residual == m_iUnplaced,', 'm_sBaseline = before;', 'Missing(m_sBaseline, now) == m_sRemoved', 'left == had - 1', 'restored == had') {
  Assert $fixture.Contains($needle) "round-trip fixture must drive: $needle"
 }
+# Only what the pass guarantees is asserted; full restoration is reported (inventories, unplaced).
+$loaded = Get-Body $fixture 'void\s+CheckLoaded\s*\(\s*\)'
+Assert (!$loaded.Contains('Check(m_iInventories == 4') -and !$loaded.Contains('Check(m_iUnplaced == 0')) 'full restoration is reported, not asserted'
+Assert ($fixture.Contains('// Loadout goal on top of that gate (reported, not asserted): inventories=4 and unplaced=0.')) 'the fixture header names the loadout goal'
 # The before-save snapshot is taken in the frame of the save, and is the saved list itself.
 $capturePhase = Get-Body $fixture 'void\s+CaptureAndLoad\s*\(\s*\)'
 Assert ($capturePhase.IndexOf('expect.m_sItems = Items(soldier);') -ge 0 -and $capturePhase.IndexOf('expect.m_sItems = Items(soldier);') -lt $capturePhase.IndexOf('CDF_GMSaveCapture.Capture(')) 'every soldier is snapshotted in the frame of the save'

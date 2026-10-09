@@ -176,7 +176,7 @@ class EUS_CDF
  static const int REFUSAL_WINDOW_MS = 2000;
  static void Reject(string reason)
  {
-  Print("[EUS CDF HOLD] " + reason, LogLevel.ERROR);
+  Print("[EUS CDF HOLD] " + reason, LogLevel.WARNING);
   int now = System.GetTickCount();
   int age = now - LastRefusalTick;
   if (LastRefusal.IsEmpty() || age < 0 || age > REFUSAL_WINDOW_MS)
@@ -292,7 +292,7 @@ modded class CDF_GMSaveState
   else
   {
    EUS_CDF.ApplyFailed++;
-   Print("[EUS CDF] Saved unit script refused: " + reason, LogLevel.ERROR);
+   Print("[EUS CDF] Saved unit script refused: " + reason, LogLevel.WARNING);
   }
   EUS_CDF.ApplyTiming(true, timing, inner, innerEnd);
  }
