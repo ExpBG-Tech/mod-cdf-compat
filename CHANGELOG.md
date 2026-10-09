@@ -1,5 +1,13 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.10
+
+- New Unit Scripts bridge: CDF saves now keep each AI soldier's Hold position, Freeze or ambient
+  animation together with his held spot and heading, and a CDF load restores them after CDF's
+  deferred state pass, once the soldier's AI is ready. A damaged script envelope is refused before CDF
+  clears the scene; an unreadable script only loses that soldier's script. Character inventories pass
+  through unchanged. Requires EXPBG GM Tools 0.1.18 (unit script state API).
+
 ## 0.1.9
 
 - Built against EXPBG GM Tools 0.1.16 (pinned in `tools/pack.json`), which now depends on EXPBG Audio Data.

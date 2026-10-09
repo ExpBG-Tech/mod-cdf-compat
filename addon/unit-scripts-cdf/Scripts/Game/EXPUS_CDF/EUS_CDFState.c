@@ -9,6 +9,10 @@
 // held spot and heading), and hands it back in CDF's deferred state pass, after CDF
 // repaired group membership. EUS_UnitState.Restore queues it with the Unit Scripts
 // manager, which binds it once the soldier's AI is ready (bounded wait) on the saved spot.
+// Inventory and damage stay CDF's: the wrapped state reaches CDF unchanged before the
+// script is queued, and the bind moves no item (fixture control load without envelopes).
+// CDF 1.4.1 itself does not give every vanilla loadout back (pouch items its engine
+// fallback re-places can vanish), with or without a script.
 //
 // Envelope: {"eusScript":"<payload>","cdfState":"<state of the inner chain>"}; the payload
 // is EUS_UnitState's JSON text (version 1), nested as a string so no key of it appears

@@ -92,11 +92,22 @@ Assert (@([IO.File]::ReadAllBytes($PSCommandPath) | Where-Object { $_ -gt 127 -o
 
 # Native round trip wiring (Run-CdfRoundTrip.ps1, orchestrator only).
 $fixture = Read-Text $fixturePath
-$expect = '\[EXPG EUS CDF ROUNDTRIP RESULT\] checks=[1-9]\d* failures=0 saved=3 restored=3 posed=1 plain=1 inventories=4 brokenRefused=1 invalidSkipped=1 reason=completed'
+$expect = '\[EXPG EUS CDF ROUNDTRIP RESULT\] checks=[1-9]\d* failures=0 saved=3 restored=3 posed=1 plain=1 inventories=4 cdfLoss=\d+ brokenRefused=1 invalidSkipped=1 reason=completed'
 Assert ($fixture.Contains("-FixturePath tests/EUS_CDFScriptsRoundTrip.c -ExpectResult '$expect' -TimeoutSeconds 600 -OrchestratorSlotGranted")) 'round-trip fixture header carries its runner command'
 Assert ($fixture -match 'class\s+EXPG_CdfRoundTripClass\s*:\s*GenericEntityClass' -and $fixture -match 'class\s+EXPG_CdfRoundTrip\s*:\s*GenericEntity') 'round-trip fixture keeps the runner driver class name'
-foreach ($needle in 'CDF_GMSaveCapture.Capture("eus-cdf-roundtrip", "fixture")', 'document.SaveToFile(FILE)', 'Loaded.LoadFromFile(FILE)', 'CDF_GMSaveRestore.Restore(Loaded)', 'cfg.m_bSaveCharacterInventories = true;', 'cfg.m_bClearBeforeLoad = true;', 'bool refused = !CDF_GMSaveRestore.Restore(Broken);', 'CDF_GMSaveRestore.Restore(Invalid)', 'EUS_CDF.Skipped == 1', 'if (carried == match.Items) Inventories++;', 'Resource teamResource = Resource.Load(teamName);') {
+foreach ($needle in 'CDF_GMSaveCapture.Capture("eus-cdf-roundtrip", "fixture")', 'document.SaveToFile(FILE)', 'Loaded.LoadFromFile(FILE)', 'CDF_GMSaveRestore.Restore(Loaded)', 'cfg.m_bSaveCharacterInventories = true;', 'cfg.m_bClearBeforeLoad = true;', 'bool refused = !CDF_GMSaveRestore.Restore(Broken);', 'CDF_GMSaveRestore.Restore(Invalid)', 'EUS_CDF.Skipped == 1', 'Resource teamResource = Resource.Load(teamName);', 'm_Stripped.LoadFromFile(FILE)', 'CDF_GMSaveRestore.Restore(m_Stripped)', 'expect.m_sLoaded == expect.m_sControl) Inventories++;', 'Check(Bound() == 0 && Manager.CountPendingRestores() == 0, "the control load restores no unit script");') {
  Assert $fixture.Contains($needle) "round-trip fixture must drive: $needle"
 }
+# Inventory oracle (native run 2026-10-09): CDF 1.4.1 alone loses some pouch items of this
+# vanilla fire team, scripted or not, so each soldier is compared with the same soldier of a
+# control load without envelopes, both captured the same way and settled the same time.
+$strip = Get-Body $fixture 'void\s+CheckInvalid\s*\(\s*\)'
+Assert ($strip.Contains('EUS_CDF.Locate(record.m_sState, 1, payload, original) != 1') -and $strip.Contains('record.m_sState = original;') -and $strip.IndexOf('record.m_sState = original;') -lt $strip.IndexOf('CDF_GMSaveRestore.Restore(m_Stripped)')) 'the control document hands CDF each inner state without its envelope'
+$capturePhase = Get-Body $fixture 'void\s+CaptureAndLoad\s*\(\s*\)'
+Assert ($capturePhase.IndexOf('expect.m_sItems = Items(soldier);') -ge 0 -and $capturePhase.IndexOf('expect.m_sItems = Items(soldier);') -lt $capturePhase.IndexOf('CDF_GMSaveCapture.Capture(')) 'every soldier (plain too) is snapshotted in the frame of the save'
+$wrapper = Get-Body $fixture 'modded\s+class\s+CDF_GMSaveState'
+Assert ($wrapper.IndexOf('super.Apply(entity, state);') -ge 0 -and $wrapper.IndexOf('super.Apply(entity, state);') -lt $wrapper.IndexOf('EXPG_CdfRoundTrip.NoteApplied(entity);')) 'the fixture notes items only after CDF applied the state'
+foreach ($settle in 'Settle(false) == 4', 'Settle(true) == 4') { Assert $fixture.Contains($settle) "both loads are compared on the same four saved soldiers: $settle" }
+Assert (!$fixture.Contains('PlainItems')) 'no inventory snapshot taken at another moment than the save'
 Assert ($fixture.Contains('PrintFormat("[EXPG EUS CDF ROUNDTRIP RESULT] %1 %2", first, second);')) 'round-trip fixture prints its result line'
-'PASS: Unit Scripts CDF bridge: eusScript envelope through EUS_UnitState, unwrap before super, refusals before CDF changes the scene, unreadable scripts skipped, peeling and Intel re-check, bounded load summary, GM refusal dialog, Enforce gotchas; round-trip fixture wired.'
+'PASS: Unit Scripts CDF bridge: eusScript envelope through EUS_UnitState, unwrap before super, refusals before CDF changes the scene, unreadable scripts skipped, peeling and Intel re-check, bounded load summary, GM refusal dialog, Enforce gotchas; round-trip fixture wired with its CDF-alone inventory control.'

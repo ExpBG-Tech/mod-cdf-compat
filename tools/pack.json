@@ -128,6 +128,14 @@
         "repository": "ExpBG-Tech/mod-cdf-compat",
         "note": "Developed in this repository. Saves each scripted AI soldier's Hold position, Freeze or ambient animation (script code, held spot and heading, through the GM Tools EUS_UnitState API) in its CDF state and restores it after CDF's deferred state pass; a structurally broken envelope is refused before CDF clears the scene, an unreadable script only loses that script."
       }
+    },
+    {
+      "name": "inventory-cdf",
+      "title": "Inventory CDF",
+      "origin": {
+        "repository": "ExpBG-Tech/mod-cdf-compat",
+        "note": "Developed in this repository. After a CDF load, gives each restored AI character, vehicle or crate back the saved items CDF 1.4.1's inventory restore lost (items its engine fallback re-placed that then vanished): only the missing ones, into their saved storage or any storage with room, never more than were saved and never the items CDF itself refused; players are never touched and nothing new is saved."
+      }
     }
   ],
   "merge": [],
