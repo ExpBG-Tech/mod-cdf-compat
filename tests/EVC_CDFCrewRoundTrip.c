@@ -270,6 +270,18 @@ class EXPG_CdfRoundTrip : GenericEntity
   if (vehicle) Usable(m_Team, slot.GetVehicle());
   return true;
  }
+ // SCR_EditableCharacterComponent.SetParentEntity(vehicle, changedByUser): the GM drag.
+ static bool GmDrag(SCR_ChimeraCharacter soldier, IEntity holder)
+ {
+  SCR_EditableEntityComponent editable = SCR_EditableEntityComponent.GetEditableEntity(soldier);
+  SCR_EditableEntityComponent target = SCR_EditableEntityComponent.GetEditableEntity(holder);
+  if (!editable || !target)
+  {
+   return false;
+  }
+  editable.SetParentEntity(target, true);
+  return true;
+ }
  // As the GM move-in does: the group may use the vehicle.
  static void Usable(SCR_AIGroup group, IEntity vehicle)
  {
@@ -422,8 +434,10 @@ class EXPG_CdfRoundTrip : GenericEntity
    Finish("board");
    return;
   }
-  Check(Board(members[0], FreeSlot(m_Tripod, ECompartmentType.TURRET), true), "a fire team member mans the M2 tripod");
-  Check(Board(members[1], FreeSlot(m_Vehicle, ECompartmentType.CARGO), true), "a fire team member sits in an M1025 cargo seat");
+  // The Game Master's drag onto a vehicle: the game moves him into the first free seat
+  // (driver, turret, then cargo); he stays his squad's editable child.
+  Check(GmDrag(members[0], m_Tripod), "a fire team member is dragged onto the M2 tripod (GM move-in)");
+  Check(GmDrag(members[1], m_Vehicle), "a fire team member is dragged onto the M1025 (GM move-in, cargo)");
   if (m_Chair)
   {
    IEntity seat = SeatChild(m_Chair);
