@@ -1,5 +1,16 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.13
+
+- Vehicle Crew: each seat move-in keeps the soldier's AI out of its maximum LOD until he sits, so
+  vehicle crews far from every player take their seats after a load (production save replay: 8 of
+  8 vehicle seats, was 0). The pin is released once he sits or stands.
+- Vehicle Crew: a vehicle or static weapon added to the save with its crew (no author) is cleared
+  with that crew before a load, so a load in the same session no longer leaves a second, empty
+  tripod next to the restored one.
+- Fixtures: EBG_CDFFullCarryRoundTrip (Hold/Freeze scripts and dialog of a Full-cached squad
+  through CDF); the crew round trip now uses a tripod without an author.
+
 ## 0.1.12
 
 - Vehicle Crew: gunners of static weapons (tripods, emplacements) are restored to their seat. A

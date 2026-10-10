@@ -80,7 +80,7 @@ Assert ($heine.Count -eq 0 -or @($heine | Where-Object { $_.Line -notmatch '^\s*
 
 # Clear: a saved vehicle's default crew goes with it; super first.
 $managed = Get-Body $bridge 'override\s+static\s+bool\s+IsManaged\s*\('
-Assert-Order $managed @('if (super.IsManaged(entity))', 'return true;', 'return EVC_CDF.ClearedWithVehicle(entity);') 'IsManaged'
+Assert-Order $managed @('if (super.IsManaged(entity))', 'return true;', 'return EVC_CDF.ClearedWithVehicle(entity) || EVC_CDF.ClearedWithCrew(entity);') 'IsManaged'
 $cleared = Get-Body $bridge 'static\s+bool\s+ClearedWithVehicle\s*\('
 Assert ($cleared.Contains('EEditableEntityType.GROUP') -and $cleared.Contains('group.m_bEVC_DefaultCrew') -and $cleared.Contains('CDF_GMSaveCapture.IsManaged(SCR_EditableEntityComponent.GetEditableEntity(holder))')) 'only default crew groups seated in a managed vehicle are cleared'
 $marker = Get-Body $bridge 'override\s+protected\s+void\s+FinishedSpawningDefaultOccupants\s*\(\s*bool\s+wasCanceled\s*\)'

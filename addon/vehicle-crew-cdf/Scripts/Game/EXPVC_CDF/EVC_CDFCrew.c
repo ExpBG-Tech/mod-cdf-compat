@@ -91,6 +91,8 @@ class EVC_CDF
  static const int SLOW_RETRY_MS = 5000;
  static const int SLOW_WINDOW_MS = 600000;
  static const int SLOW_PUMP_MS = 1000;
+ // Seconds the soldier's AI is kept out of its maximum LOD for one move-in.
+ static const float WAKE_PIN_SECONDS = 15;
  static const float PROP_RADIUS = 0.35;
  static const int RESULT_PENDING = 0;
  static const int RESULT_REQUESTED = 1;
@@ -620,6 +622,41 @@ class EVC_CDF
   return false;
  }
 
+ // Clear: a vehicle or static weapon CDF does not save (no author) goes with a saved crew
+ // member sitting in it, exactly the holders CaptureCrew adds (AdoptHolder). Without this
+ // a load in the same session left the original next to the one the save recreates.
+ static bool ClearedWithCrew(SCR_EditableEntityComponent entity)
+ {
+  if (!entity || !Serializable(entity))
+  {
+   return false;
+  }
+  IEntity holder = entity.GetOwner();
+  if (!IsVehicle(holder) || IsHelper(holder))
+  {
+   return false;
+  }
+  BaseCompartmentManagerComponent manager = BaseCompartmentManagerComponent.Cast(holder.FindComponent(BaseCompartmentManagerComponent));
+  if (!manager)
+  {
+   return false;
+  }
+  array<BaseCompartmentSlot> slots = {};
+  manager.GetCompartments(slots);
+  foreach (BaseCompartmentSlot slot : slots)
+  {
+   IEntity occupant;
+   if (slot) occupant = slot.GetOccupant();
+   if (!occupant || IsPlayer(occupant)) continue;
+   SCR_EditableEntityComponent crew = SCR_EditableEntityComponent.GetEditableEntity(occupant);
+   if (crew && crew.GetEntityType() == EEditableEntityType.CHARACTER && CDF_GMSaveCapture.IsManaged(crew))
+   {
+    return true;
+   }
+  }
+  return false;
+ }
+
  //------------------------------------------------------------------------------------------------
  // Load: every seat of the document, read before CDF changes anything.
  static bool ReadDocument(notnull CDF_GMSaveDocument document, notnull array<ref EVC_Seat> seats, out int skipped, out string reason)
@@ -831,6 +868,7 @@ class EVC_CDF
     return;
    }
    Settle(seat, character);
+   Unpin(character);
    seat.m_iResult = RESULT_SEATED;
    return;
   }
@@ -854,6 +892,7 @@ class EVC_CDF
    }
   }
   Stand(seat, character);
+  Unpin(character);
   seat.m_iResult = RESULT_STANDING;
  }
  // The saved holder: its record's entity, or the prop of the saved prefab at the saved spot.
@@ -918,7 +957,40 @@ class EVC_CDF
    return;
   }
   seat.m_sWhy = "move-in not completed";
+  Wake(character);
   access.GetInVehicle(slot.GetOwner(), slot, true, -1, ECloseDoorAfterActions.INVALID, true);
+ }
+ // Far from every player the server keeps a soldier's AI at its maximum LOD and never
+ // runs the move-in (production 2026-10-10: every vehicle crew logged 'move-in not
+ // completed'). The short pin Ambient Civilians uses for the same reason; a cache's
+ // permanent LOD pin is left alone.
+ protected static void Wake(ChimeraCharacter character)
+ {
+  AIControlComponent control = AIControlComponent.Cast(character.FindComponent(AIControlComponent));
+  if (!control)
+  {
+   return;
+  }
+  AIAgent agent = control.GetControlAIAgent();
+  if (!agent || agent.GetPermanentLOD() >= 0)
+  {
+   return;
+  }
+  agent.PreventMaxLOD(WAKE_PIN_SECONDS);
+  agent.SetLOD(0);
+  agent.ActivateAI();
+ }
+ // The pin lasts only for the move-in: once he is seated (or stands) his AI may drop to
+ // its maximum LOD again, as before the load.
+ protected static void Unpin(ChimeraCharacter character)
+ {
+  AIControlComponent control = AIControlComponent.Cast(character.FindComponent(AIControlComponent));
+  if (!control)
+  {
+   return;
+  }
+  AIAgent agent = control.GetControlAIAgent();
+  if (agent && agent.GetPermanentLOD() < 0) agent.AllowMaxLOD();
  }
  // A seated crew's group knows its vehicle (as the GM move-in does) and keeps its faction.
  protected static void Settle(EVC_Seat seat, ChimeraCharacter character)
@@ -1141,7 +1213,7 @@ modded class CDF_GMSaveCapture
   {
    return true;
   }
-  return EVC_CDF.ClearedWithVehicle(entity);
+  return EVC_CDF.ClearedWithVehicle(entity) || EVC_CDF.ClearedWithCrew(entity);
  }
 }
 

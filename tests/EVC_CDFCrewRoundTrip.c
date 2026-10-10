@@ -164,9 +164,11 @@ class EXPG_CdfRoundTrip : GenericEntity
    return null;
   }
   IEntity entity = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), Params(m_vPoint + offset));
-  if (entity) Author(entity);
+  if (entity && m_bAuthorSpawns) Author(entity);
   return entity;
  }
+ // Production 2026-10-10: Game Master tripods without an author (CDF skips them).
+ bool m_bAuthorSpawns = true;
  bool Collect(IEntity entity)
  {
   if (m_aNear) m_aNear.Insert(entity);
@@ -392,7 +394,9 @@ class EXPG_CdfRoundTrip : GenericEntity
   cfg.m_bSaveCharacterInventories = true;
   m_vPoint[1] = GetGame().GetWorld().GetSurfaceY(m_vPoint[0], m_vPoint[2]);
   m_Vehicle = Spawn(VEHICLE, vector.Zero);
+  m_bAuthorSpawns = false;
   m_Tripod = Spawn(TRIPOD, Vector(9, 0, 0));
+  m_bAuthorSpawns = true;
   m_Team = SCR_AIGroup.Cast(Spawn(TEAM, Vector(6, 0, 9)));
   Resource chairResource = Resource.Load(CHAIR);
   if (chairResource && chairResource.IsValid()) m_Chair = Spawn(CHAIR, Vector(-6, 0, 9));
@@ -506,6 +510,7 @@ class EXPG_CdfRoundTrip : GenericEntity
    return;
   }
   m_iAdopted = EVC_CDF.s_iSavedMembers;
+  Check(EVC_CDF.s_iSavedHolders == 1, string.Format("the tripod without an author is saved with its gunner (%1 holder added)", EVC_CDF.s_iSavedHolders));
   m_iLinked = EVC_CDF.s_iSavedLinked;
   Check(EVC_CDF.s_iSavedGroups == 1 && m_iAdopted == crew, string.Format("the default crew CDF skipped is added: one group, %1 members (%2)", crew, m_iAdopted));
   Check(EVC_CDF.s_iSavedSeats == m_iSeats && EVC_CDF.s_iSavedProps == chairs && m_iLinked == m_iSeats - chairs, string.Format("every seated soldier carries his seat (%1 seats, %2 linked, %3 props)", EVC_CDF.s_iSavedSeats, m_iLinked, EVC_CDF.s_iSavedProps));
