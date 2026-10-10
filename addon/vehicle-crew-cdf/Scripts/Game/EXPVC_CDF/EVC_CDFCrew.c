@@ -67,6 +67,10 @@ class EVC_Seat
  int m_iOrdinal;
  // Why the last attempt did not seat him (load summary of standing seats).
  string m_sWhy;
+ // The last refusal can never seat him (seat gone, taken, wrong type): stand at once.
+ bool m_bHard;
+ // Tick of his first move-in request.
+ int m_iFirst = -1;
 }
 
 class EVC_CDF
@@ -80,6 +84,13 @@ class EVC_CDF
  static const int RETRY_MS = 500;
  static const int MAX_ATTEMPTS = 4;
  static const int MAX_POLLS = 600;
+ // A move-in the engine accepted but did not finish (production 2026-10-10: every
+ // vehicle crew far from all players; the soldier is not simulated there) is sent again
+ // every SLOW_RETRY_MS for up to SLOW_WINDOW_MS before he stands up. The pump then
+ // runs every SLOW_PUMP_MS.
+ static const int SLOW_RETRY_MS = 5000;
+ static const int SLOW_WINDOW_MS = 600000;
+ static const int SLOW_PUMP_MS = 1000;
  static const float PROP_RADIUS = 0.35;
  static const int RESULT_PENDING = 0;
  static const int RESULT_REQUESTED = 1;
@@ -753,12 +764,46 @@ class EVC_CDF
   {
    return false;
   }
-  if (!open || s_iPolls >= MAX_POLLS)
+  if (!open || (s_iPolls >= MAX_POLLS && !SlowOpen()))
   {
    Finish(false);
    return false;
   }
   return true;
+ }
+ // Seats still within their slow retry window (keeps the pass alive past MAX_POLLS).
+ static bool SlowOpen()
+ {
+  if (!s_aSeats)
+  {
+   return false;
+  }
+  int now = System.GetTickCount();
+  foreach (EVC_Seat seat : s_aSeats)
+  {
+   if (!Resolved(seat) && !seat.m_bHard && seat.m_iFirst >= 0 && now - seat.m_iFirst < SLOW_WINDOW_MS)
+   {
+    return true;
+   }
+  }
+  return false;
+ }
+ // Next pump delay: fast while a seat is due within a second, else slow.
+ static int NextPumpMs()
+ {
+  if (!s_aSeats)
+  {
+   return PUMP_MS;
+  }
+  int now = System.GetTickCount();
+  foreach (EVC_Seat seat : s_aSeats)
+  {
+   if (!Resolved(seat) && seat.m_iDue - now < SLOW_PUMP_MS)
+   {
+    return PUMP_MS;
+   }
+  }
+  return SLOW_PUMP_MS;
  }
  protected static void Advance(EVC_Seat seat, bool cdfDone, bool paused)
  {
@@ -799,6 +844,15 @@ class EVC_CDF
    Request(seat, character, now);
    return;
   }
+  if (!seat.m_bHard && seat.m_iFirst >= 0 && now - seat.m_iFirst < SLOW_WINDOW_MS)
+  {
+   Request(seat, character, now);
+   seat.m_iDue = now + SLOW_RETRY_MS;
+   if (!seat.m_bHard)
+   {
+    return;
+   }
+  }
   Stand(seat, character);
   seat.m_iResult = RESULT_STANDING;
  }
@@ -834,11 +888,16 @@ class EVC_CDF
  {
   seat.m_iAttempts++;
   seat.m_iDue = now + RETRY_MS;
+  if (seat.m_iFirst < 0) seat.m_iFirst = now;
   BaseCompartmentSlot slot = Slot(seat);
   if (!slot)
   {
    seat.m_sWhy = "holder or seat not found";
-   if (seat.m_bLinked || seat.m_HolderEntity) seat.m_iAttempts = MAX_ATTEMPTS;
+   if (seat.m_bLinked || seat.m_HolderEntity)
+   {
+    seat.m_iAttempts = MAX_ATTEMPTS;
+    seat.m_bHard = true;
+   }
    return;
   }
   IEntity occupant = slot.GetOccupant();
@@ -855,6 +914,7 @@ class EVC_CDF
    else if (slot.GetType() != seat.m_iType) seat.m_sWhy = string.Format("seat type %1, saved %2", slot.GetType(), seat.m_iType);
    else seat.m_sWhy = "already in a compartment";
    seat.m_iAttempts = MAX_ATTEMPTS;
+   seat.m_bHard = true;
    return;
   }
   seat.m_sWhy = "move-in not completed";
@@ -1136,7 +1196,7 @@ modded class CDF_GMSaveRestore
   bool complete = !s_RestoredEntities && s_aPendingStates && s_aPendingStates.IsEmpty() && s_aGuardedGroups && s_aGuardedGroups.IsEmpty() && s_aPendingMembers && s_aPendingMembers.IsEmpty();
   if (EVC_CDF.Pump(complete) && GetGame())
   {
-   GetGame().GetCallqueue().CallLater(EVC_PumpCrew, EVC_CDF.PUMP_MS, false);
+   GetGame().GetCallqueue().CallLater(EVC_PumpCrew, EVC_CDF.NextPumpMs(), false);
   }
  }
 }

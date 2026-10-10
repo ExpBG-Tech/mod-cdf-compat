@@ -7,6 +7,9 @@
   (Enforce map.Find leaves 0 when the key is missing), so the gunner always stood up; such a vehicle
   or static weapon is now saved with its crew. Every soldier left standing after a load is logged
   once with the seat and the reason ([EXPBG CDF CREW STAND]).
+- Vehicle Crew: a seat move-in the engine accepted but did not finish (vehicle crews far from every
+  player after a load) is retried every 5 s for up to 10 minutes instead of standing the soldier up
+  after 2 s. A seat that is gone, taken or of another type still stands him up at once.
 - Unit Caching: after a CDF load every cache zone starts disabled, whatever it was when saved; the
   Game Master enables them with the global controller.
 
