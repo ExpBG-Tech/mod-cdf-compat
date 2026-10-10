@@ -372,6 +372,22 @@ modded class CDF_GMSaveRestore
     }
     EBG_OptimizerControl.Publish();
    }
+   // Owner decision 2026-10-10: after a CDF load every cache zone starts disabled,
+   // whatever it was when saved; the Game Master enables them with the global
+   // controller when he wants caching. Imported caches restore through the normal
+   // scheduler, exactly as with Disable all zones.
+   int disabled;
+   foreach (EBG_CacheZone loadedZone : EBG_CacheZone.Zones)
+   {
+    if (!loadedZone) continue;
+    loadedZone.EBG_SetGlobalEnabled(false);
+    disabled++;
+   }
+   if (disabled > 0)
+   {
+    PrintFormat("[EBG CDF LOAD] %1 cache zones start disabled; enable them with the global controller", disabled);
+    EBG_OptimizerControl.Poll(EBG_CacheManager.Get());
+   }
   }
   EBG_CDFCacheState.PendingDocument = null;
   EBG_CacheSnapshot.Loading = false;

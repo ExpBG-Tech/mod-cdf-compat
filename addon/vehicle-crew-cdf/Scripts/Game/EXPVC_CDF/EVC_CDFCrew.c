@@ -65,6 +65,8 @@ class EVC_Seat
  int m_iResult;
  int m_iDue;
  int m_iOrdinal;
+ // Why the last attempt did not seat him (load summary of standing seats).
+ string m_sWhy;
 }
 
 class EVC_CDF
@@ -94,7 +96,7 @@ class EVC_CDF
  // Finished passes and the last one's totals (native fixture).
  static int s_iPasses, s_iLastRestored, s_iLastSeated, s_iLastStanding, s_iLastFailed, s_iLastSkipped;
  // Last save (native fixture).
- static int s_iSavedSeats, s_iSavedLinked, s_iSavedProps, s_iSavedGroups, s_iSavedMembers, s_iSavedSkipped;
+ static int s_iSavedSeats, s_iSavedLinked, s_iSavedProps, s_iSavedGroups, s_iSavedMembers, s_iSavedSkipped, s_iSavedHolders;
  static string s_sLastRefusal;
  static int s_iLastRefusalTick;
 
@@ -437,6 +439,7 @@ class EVC_CDF
   s_iSavedSeats = 0;
   s_iSavedLinked = 0;
   s_iSavedProps = 0;
+  s_iSavedHolders = 0;
   s_iSavedGroups = 0;
   s_iSavedMembers = 0;
   s_iSavedSkipped = 0;
@@ -478,7 +481,11 @@ class EVC_CDF
    BaseCompartmentSlot seat = SeatOf(crew.m_Entity.GetOwner(), holder, seatIndex);
    if (!seat) continue;
    int holderIndex = -1;
-   if (IsVehicle(holder)) saved.Find(holder, holderIndex);
+   // map.Find leaves 0 in the out value when the key is missing: never trust it then.
+   if (IsVehicle(holder) && !saved.Find(holder, holderIndex)) holderIndex = -1;
+   // A vehicle or static weapon CDF did not save (no author, e.g. a GM-placed tripod)
+   // would be gone after a restart and its crew would stand: it is saved with its crew.
+   if (holderIndex < 0 && IsVehicle(holder)) holderIndex = AdoptHolder(document, holder, crew, saved);
    ResourceName holderPrefab = CDF_GMSaveState.GetPrefabName(holder);
    if (s_iSavedSeats >= MAX_SEATS || (holderIndex < 0 && holderPrefab.IsEmpty()))
    {
@@ -510,11 +517,35 @@ class EVC_CDF
   {
    return false;
   }
-  if (s_iSavedSeats > 0 || s_iSavedGroups > 0 || s_iSavedSkipped > 0)
+  if (s_iSavedSeats > 0 || s_iSavedGroups > 0 || s_iSavedSkipped > 0 || s_iSavedHolders > 0)
   {
-   PrintFormat("[EXPBG CDF CREW SAVE] seats=%1 vehicleLinked=%2 propSeats=%3 addedGroups=%4 addedMembers=%5 skipped=%6 ownMs=%7", s_iSavedSeats, s_iSavedLinked, s_iSavedProps, s_iSavedGroups, s_iSavedMembers, s_iSavedSkipped, System.GetTickCount() - timing);
+   PrintFormat("[EXPBG CDF CREW SAVE] seats=%1 vehicleLinked=%2 propSeats=%3 addedGroups=%4 addedMembers=%5 skipped=%6 ownMs=%7 addedHolders=%8", s_iSavedSeats, s_iSavedLinked, s_iSavedProps, s_iSavedGroups, s_iSavedMembers, s_iSavedSkipped, System.GetTickCount() - timing, s_iSavedHolders);
   }
   return true;
+ }
+ // An unsaved vehicle or static weapon holding a saved crew member becomes a CDF record
+ // (author of that crew member). Index of its record, or -1.
+ static int AdoptHolder(notnull CDF_GMSaveDocument document, IEntity holder, CDF_GMSaveEntityRecord crew, notnull map<IEntity, int> saved)
+ {
+  SCR_EditableEntityComponent editable = SCR_EditableEntityComponent.GetEditableEntity(holder);
+  if (!Serializable(editable) || IsHelper(holder))
+  {
+   return -1;
+  }
+  CDF_GMSaveEntityRecord record = NewRecord(editable, -1);
+  if (!record)
+  {
+   return -1;
+  }
+  record.m_sAuthorUID = crew.m_sAuthorUID;
+  record.m_sAuthorPlatformID = crew.m_sAuthorPlatformID;
+  record.m_iAuthorPlatform = crew.m_iAuthorPlatform;
+  record.m_iAuthorUpdated = crew.m_iAuthorUpdated;
+  int index = document.m_aEntities.Count();
+  document.m_aEntities.Insert(record);
+  saved.Set(holder, index);
+  s_iSavedHolders++;
+  return index;
  }
  // Added records pass the save checks the other adapters run on CDF's own records.
  static bool ValidAdded(notnull CDF_GMSaveDocument document, int first, out string reason)
@@ -806,6 +837,7 @@ class EVC_CDF
   BaseCompartmentSlot slot = Slot(seat);
   if (!slot)
   {
+   seat.m_sWhy = "holder or seat not found";
    if (seat.m_bLinked || seat.m_HolderEntity) seat.m_iAttempts = MAX_ATTEMPTS;
    return;
   }
@@ -817,9 +849,15 @@ class EVC_CDF
   CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
   if (occupant || !access || !slot.IsCompartmentAccessible() || slot.GetType() != seat.m_iType || access.IsInCompartment())
   {
+   if (occupant) seat.m_sWhy = "seat occupied by " + occupant.ClassName();
+   else if (!access) seat.m_sWhy = "no compartment access";
+   else if (!slot.IsCompartmentAccessible()) seat.m_sWhy = "seat not accessible";
+   else if (slot.GetType() != seat.m_iType) seat.m_sWhy = string.Format("seat type %1, saved %2", slot.GetType(), seat.m_iType);
+   else seat.m_sWhy = "already in a compartment";
    seat.m_iAttempts = MAX_ATTEMPTS;
    return;
   }
+  seat.m_sWhy = "move-in not completed";
   access.GetInVehicle(slot.GetOwner(), slot, true, -1, ECloseDoorAfterActions.INVALID, true);
  }
  // A seated crew's group knows its vehicle (as the GM move-in does) and keeps its faction.
@@ -903,7 +941,12 @@ class EVC_CDF
    foreach (EVC_Seat seat : s_aSeats)
    {
     if (seat.m_iResult == RESULT_SEATED) seated++;
-    else if (seat.m_iResult == RESULT_STANDING) standing++;
+    else if (seat.m_iResult == RESULT_STANDING)
+    {
+     standing++;
+     // Once per load and standing seat: which holder and why.
+     PrintFormat("[EXPBG CDF CREW STAND] %1 seat %2/%3 of %4 at %5: %6", seat.m_Character, seat.m_iType, seat.m_iIndex, seat.m_sHolderPrefab, seat.m_vHolderPos, seat.m_sWhy);
+    }
     else failed++;
    }
   }

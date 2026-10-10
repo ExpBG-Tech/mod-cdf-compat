@@ -18,7 +18,7 @@
       },
       "files": {
         "Scripts/Game/EXPBG/EBG_CDFAuthorRegistration.c": "6b705797bef90583a8bef4070d5d0b1606e4997f",
-        "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": "bc9b7602a6708fea385279604ddee21202355cdf",
+        "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": "a374100a65cdc5819a5062d44c9fffa897f6c41f",
         "UI/Textures/EXPBG/EXPBG_CDF_Workshop_Banner.png": "da6766ffd8acc81f86aad0f90965babe0dae4730"
       },
       "localChanges": {
@@ -30,7 +30,7 @@
         "Scripts/Game/EXPBG/EBG_CDFCacheAdapter.c": {
           "originBlob": "7ce191ae76fe281b61ca311ea3cff4dc9334a305",
           "version": "0.1.8",
-          "note": "Changed in this repository: [EBG CDF EMPTY GROUP(S)] diagnostic for CDF-guarded groups that end a restore without AI (members never saved vs failed to restore, Unit Caching snapshot present); [CDF TIMING] Restore and Apply timing; passes the document to the author restore summary (0.1.3). World cleanup cancels the pending unregistered-author delete summary and prints it at once (0.1.8)."
+          "note": "Changed in this repository: [EBG CDF EMPTY GROUP(S)] diagnostic for CDF-guarded groups that end a restore without AI (members never saved vs failed to restore, Unit Caching snapshot present); [CDF TIMING] Restore and Apply timing; passes the document to the author restore summary (0.1.3). World cleanup cancels the pending unregistered-author delete summary and prints it at once (0.1.8). After a successful CDF load every cache zone starts disabled; the Game Master enables them with the global controller (0.1.12)."
         }
       }
     },

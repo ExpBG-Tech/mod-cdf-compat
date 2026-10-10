@@ -1,5 +1,15 @@
 # EXPBG CDF Compat changelog
 
+## 0.1.12
+
+- Vehicle Crew: gunners of static weapons (tripods, emplacements) are restored to their seat. A
+  holder that CDF did not save (no author, e.g. a Game Master tripod) was linked to the wrong record
+  (Enforce map.Find leaves 0 when the key is missing), so the gunner always stood up; such a vehicle
+  or static weapon is now saved with its crew. Every soldier left standing after a load is logged
+  once with the seat and the reason ([EXPBG CDF CREW STAND]).
+- Unit Caching: after a CDF load every cache zone starts disabled, whatever it was when saved; the
+  Game Master enables them with the global controller.
+
 ## 0.1.11
 
 - New Vehicle Crew module: AI soldiers sitting in vehicles, static weapons and sittable props
